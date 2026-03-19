@@ -1,0 +1,22 @@
+# Python standard .gitignore
+
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+
+# Python virtual environments
+.venv/
+
+# Environment variables
+.env
+
+# Uploads
+uploads/
+
+# IDE folders
+.idea/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
