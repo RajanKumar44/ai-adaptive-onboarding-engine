@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     # ================= APP =================
     APP_NAME: str = "AI Adaptive Onboarding Engine"
     APP_VERSION: str = "1.0.0"
-    DEBUG: bool = True
+    DEBUG: bool = False
 
     # ================= API =================
     API_PREFIX: str = "/api/v1"
