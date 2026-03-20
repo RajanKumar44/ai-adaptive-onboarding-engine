@@ -76,6 +76,49 @@ class Settings(BaseSettings):
     PASSWORD_REQUIRE_DIGITS: bool = True
     PASSWORD_REQUIRE_SPECIAL: bool = True
     
+    # ============================================================================
+    # LOGGING CONFIGURATION (PHASE 3)
+    # ============================================================================
+    # Environment and Application Info
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")  # development, staging, production
+    
+    # Logging Level
+    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    LOG_FORMAT: str = os.getenv("LOG_FORMAT", "colored")  # colored (dev) or json (prod)
+    
+    # Log File Configuration
+    LOG_DIR: str = os.getenv("LOG_DIR", "./logs")
+    LOG_MAX_BYTES: int = int(os.getenv("LOG_MAX_BYTES", "104857600"))  # 100MB
+    LOG_BACKUP_COUNT: int = int(os.getenv("LOG_BACKUP_COUNT", "10"))
+    
+    # Request/Response Logging
+    LOG_REQUESTS_ENABLED: bool = os.getenv("LOG_REQUESTS_ENABLED", "True").lower() == "true"
+    LOG_RESPONSES_ENABLED: bool = os.getenv("LOG_RESPONSES_ENABLED", "True").lower() == "true"
+    LOG_REQUEST_BODY_ENABLED: bool = os.getenv("LOG_REQUEST_BODY_ENABLED", "False").lower() == "true"
+    LOG_RESPONSE_BODY_ENABLED: bool = os.getenv("LOG_RESPONSE_BODY_ENABLED", "False").lower() == "true"
+    
+    # ============================================================================
+    # ERROR TRACKING CONFIGURATION (SENTRY)
+    # ============================================================================
+    SENTRY_DSN: str = os.getenv("SENTRY_DSN", "")  # Set to enable Sentry
+    SENTRY_ENVIRONMENT: str = os.getenv("SENTRY_ENVIRONMENT", ENVIRONMENT)
+    SENTRY_TRACES_SAMPLE_RATE: float = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1"))  # 10% of transactions
+    SENTRY_PROFILES_SAMPLE_RATE: float = float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.1"))  # 10% of profiles
+    
+    # ============================================================================
+    # PROMETHEUS METRICS CONFIGURATION
+    # ============================================================================
+    PROMETHEUS_ENABLED: bool = os.getenv("PROMETHEUS_ENABLED", "True").lower() == "true"
+    PROMETHEUS_PORT: int = int(os.getenv("PROMETHEUS_PORT", "8001"))
+    PROMETHEUS_METRICS_PREFIX: str = "app_"
+    
+    # ============================================================================
+    # PERFORMANCE PROFILING CONFIGURATION
+    # ============================================================================
+    PROFILING_ENABLED: bool = os.getenv("PROFILING_ENABLED", "False").lower() == "true"
+    PROFILING_SAMPLE_RATE: float = float(os.getenv("PROFILING_SAMPLE_RATE", "0.1"))  # 10% of requests
+    SLOW_QUERY_THRESHOLD_MS: float = float(os.getenv("SLOW_QUERY_THRESHOLD_MS", "1000"))  # 1 second
+    
     class Config:
         """Pydantic config."""
         env_file = ".env"
