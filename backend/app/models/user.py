@@ -28,7 +28,7 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # 🟢 Soft delete / active user
-    is_active = Column(Boolean, default=True)
+    is_active = Column(Boolean, default=True, nullable=False)
 
     # 🔗 Relationship
     analyses = relationship(
