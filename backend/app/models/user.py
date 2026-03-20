@@ -21,7 +21,7 @@ class User(Base):
     name = Column(String(255), nullable=True)
 
     # 🔐 For authentication (IMPORTANT)
-    hashed_password = Column(String(255), nullable=False)
+    hashed_password = Column(String(255), nullable=True)
 
     # 🕒 Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
