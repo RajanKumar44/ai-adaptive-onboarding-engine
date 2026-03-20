@@ -12,6 +12,7 @@ from app.core.config import get_settings
 from app.core.database import init_db
 from app.routes.analysis_routes import router as analysis_router
 from app.routes.auth_routes import router as auth_router
+from app.routes.admin_routes import router as admin_router
 from app.middleware.rate_limiting import limiter
 
 # Initialize settings
@@ -63,6 +64,7 @@ async def startup_event():
 # Include routers
 app.include_router(auth_router)      # Auth routes (login, register, etc.)
 app.include_router(analysis_router)   # Analysis routes
+app.include_router(admin_router)      # Admin routes (user management)
 
 
 # Root endpoint
