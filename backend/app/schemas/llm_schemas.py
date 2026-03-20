@@ -12,6 +12,7 @@ class LLMProviderEnum(str, Enum):
     """Available LLM providers."""
     OPENAI = "openai"
     CLAUDE = "claude"
+    GEMINI = "gemini"
 
 
 class LLMModelEnum(str, Enum):
@@ -22,6 +23,9 @@ class LLMModelEnum(str, Enum):
     CLAUDE_3_OPUS = "claude-3-opus-20240229"
     CLAUDE_3_SONNET = "claude-3-sonnet-20240229"
     CLAUDE_3_HAIKU = "claude-3-haiku-20240307"
+    GEMINI_1_5_PRO = "gemini-1.5-pro"
+    GEMINI_1_5_FLASH = "gemini-1.5-flash"
+    GEMINI_PRO = "gemini-pro"
 
 
 class SkillExtractionRequest(BaseModel):

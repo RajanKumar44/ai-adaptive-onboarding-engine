@@ -41,9 +41,55 @@ class Settings(BaseSettings):
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
     ALLOWED_EXTENSIONS: list = ["pdf", "txt"]
     
-    # AI Configuration (LLM placeholder)
-    LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "openai")  # Can be swapped later
-    LLM_API_KEY: str = os.getenv("LLM_API_KEY", "")
+    # ============================================================================
+    # PHASE 6: LLM INTEGRATION CONFIGURATION
+    # ============================================================================
+    # LLM Provider Selection
+    LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "openai")  # openai, claude, grok, or fallback
+    
+    # OpenAI Configuration (https://platform.openai.com/api/keys)
+    # Sign up for free, add payment method, get API key
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4")  # gpt-4, gpt-4-turbo, gpt-3.5-turbo
+    OPENAI_TIMEOUT: float = float(os.getenv("OPENAI_TIMEOUT", "30"))
+    OPENAI_MAX_TOKENS: int = int(os.getenv("OPENAI_MAX_TOKENS", "2000"))
+    OPENAI_TEMPERATURE: float = float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
+    
+    # Claude/Anthropic Configuration (https://console.anthropic.com)
+    # Sign up for free, add payment method, get API key
+    ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
+    ANTHROPIC_MODEL: str = os.getenv("ANTHROPIC_MODEL", "claude-3-sonnet-20240229")  # opus, sonnet, haiku
+    ANTHROPIC_TIMEOUT: float = float(os.getenv("ANTHROPIC_TIMEOUT", "30"))
+    ANTHROPIC_MAX_TOKENS: int = int(os.getenv("ANTHROPIC_MAX_TOKENS", "2000"))
+    ANTHROPIC_TEMPERATURE: float = float(os.getenv("ANTHROPIC_TEMPERATURE", "0.7"))
+    
+    # Google Gemini Configuration (https://aistudio.google.com/app/apikey)
+    # Free tier available, no payment method required initially
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-1.5-pro")  # gemini-1.5-pro, gemini-1.5-flash, gemini-pro
+    GEMINI_TIMEOUT: float = float(os.getenv("GEMINI_TIMEOUT", "30"))
+    GEMINI_MAX_TOKENS: int = int(os.getenv("GEMINI_MAX_TOKENS", "2000"))
+    GEMINI_TEMPERATURE: float = float(os.getenv("GEMINI_TEMPERATURE", "0.7"))
+    GEMINI_SAFETY_LEVEL: str = os.getenv("GEMINI_SAFETY_LEVEL", "MEDIUM")  # LOW, MEDIUM, HIGH, NONE
+    
+    # Caching Configuration
+    CACHE_STRATEGY: str = os.getenv("CACHE_STRATEGY", "memory")  # memory or redis
+    CACHE_TTL_SECONDS: int = int(os.getenv("CACHE_TTL_SECONDS", "3600"))  # 1 hour
+    CACHE_MAX_ITEMS: int = int(os.getenv("CACHE_MAX_ITEMS", "1000"))
+    
+    # Redis Configuration (for distributed caching)
+    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    REDIS_TIMEOUT: float = float(os.getenv("REDIS_TIMEOUT", "5"))
+    REDIS_POOL_SIZE: int = int(os.getenv("REDIS_POOL_SIZE", "10"))
+    
+    # Cost Tracking Configuration
+    COST_TRACKING_ENABLED: bool = os.getenv("COST_TRACKING_ENABLED", "true").lower() == "true"
+    COST_TRACKING_LOG_DIR: str = os.getenv("COST_TRACKING_LOG_DIR", "./logs/costs")
+    COST_FORECAST_DAYS: int = int(os.getenv("COST_FORECAST_DAYS", "30"))
+    
+    # Fallback Extraction Configuration
+    FALLBACK_EXTRACTION_ENABLED: bool = os.getenv("FALLBACK_EXTRACTION_ENABLED", "true").lower() == "true"
+    FALLBACK_ON_ERROR: bool = os.getenv("FALLBACK_ON_ERROR", "true").lower() == "true"
     
     # ============================================================================
     # SECURITY CONFIGURATION

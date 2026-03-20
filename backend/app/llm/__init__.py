@@ -12,6 +12,7 @@ from app.llm.base_provider import (
 )
 from app.llm.openai_provider import OpenAIProvider
 from app.llm.claude_provider import ClaudeProvider
+from app.llm.google_gemini_provider import GoogleGeminiProvider
 from app.llm.cache_manager import (
     BaseCacheManager,
     InMemoryCacheManager,
@@ -30,6 +31,7 @@ __all__ = [
     "LLMCost",
     "OpenAIProvider",
     "ClaudeProvider",
+    "GoogleGeminiProvider",
     "BaseCacheManager",
     "InMemoryCacheManager",
     "RedisCacheManager",

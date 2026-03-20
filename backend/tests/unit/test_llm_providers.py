@@ -414,5 +414,66 @@ class TestClaudeProviding:
         assert cost > 0
 
 
+class TestGeminiProvider:
+    """Tests for Google Gemini provider."""
+    
+    def test_gemini_pro_pricing(self):
+        """Test Gemini Pro pricing calculations."""
+        from app.llm import GoogleGeminiProvider
+        
+        provider = GoogleGeminiProvider(api_key="test_key")
+        
+        cost = provider.get_model_cost(
+            "gemini-pro",
+            1000000,  # 1M tokens
+            500000,   # 500K tokens
+        )
+        
+        # Gemini Pro: $0.5 per 1M input, $1.5 per 1M output
+        # 1M tokens: $0.5, 500K tokens: $0.75, total: $1.25
+        assert cost.total_cost > 0
+        assert cost.model == "gemini-pro"
+        assert cost.input_tokens == 1000000
+        assert cost.output_tokens == 500000
+    
+    def test_gemini_flash_pricing(self):
+        """Test Gemini 1.5 Flash pricing (most affordable)."""
+        from app.llm import GoogleGeminiProvider
+        
+        provider = GoogleGeminiProvider(api_key="test_key")
+        
+        flash_cost = provider.get_model_cost(
+            "gemini-1.5-flash",
+            1000000,  # 1M tokens
+            1000000,  # 1M tokens
+        )
+        
+        pro_cost = provider.get_model_cost(
+            "gemini-pro",
+            1000000,  # 1M tokens
+            1000000,  # 1M tokens
+        )
+        
+        # Flash should be cheaper than Pro
+        assert flash_cost.total_cost < pro_cost.total_cost
+    
+    def test_gemini_5_pro_pricing(self):
+        """Test Gemini 1.5 Pro pricing (most capable)."""
+        from app.llm import GoogleGeminiProvider
+        
+        provider = GoogleGeminiProvider(api_key="test_key")
+        
+        cost = provider.get_model_cost(
+            "gemini-1.5-pro",
+            1000000,  # 1M tokens
+            1000000,  # 1M tokens
+        )
+        
+        # Gemini 1.5 Pro: $1.25 per 1M input, $5.00 per 1M output
+        # Total: $1.25 + $5.00 = $6.25
+        expected_cost = 1.25 + 5.00
+        assert abs(cost.total_cost - expected_cost) < 0.01
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

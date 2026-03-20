@@ -9,6 +9,7 @@ from typing import Optional, Dict, Any, List
 from app.llm.base_provider import BaseLLMProvider, LLMProvider, LLMModel, LLMResponse
 from app.llm.openai_provider import OpenAIProvider
 from app.llm.claude_provider import ClaudeProvider
+from app.llm.google_gemini_provider import GoogleGeminiProvider
 from app.llm.cache_manager import (
     BaseCacheManager,
     InMemoryCacheManager,
@@ -55,6 +56,7 @@ class LLMManager:
         self.providers: Dict[LLMProvider, Optional[BaseLLMProvider]] = {
             LLMProvider.OPENAI: self._init_provider(LLMProvider.OPENAI),
             LLMProvider.CLAUDE: self._init_provider(LLMProvider.CLAUDE),
+            LLMProvider.GEMINI: self._init_provider(LLMProvider.GEMINI),
         }
         
         # Metrics
@@ -95,6 +97,14 @@ class LLMManager:
                     return ClaudeProvider(api_key)
                 else:
                     logger.warning("Anthropic API key not found in environment")
+                    return None
+            
+            elif provider == LLMProvider.GEMINI:
+                api_key = os.getenv("GEMINI_API_KEY")
+                if api_key:
+                    return GoogleGeminiProvider(api_key)
+                else:
+                    logger.warning("Gemini API key not found in environment")
                     return None
             
             return None
