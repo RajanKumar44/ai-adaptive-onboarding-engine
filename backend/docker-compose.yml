@@ -4,6 +4,7 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: ai_onboarding_db
+    restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
@@ -21,6 +22,7 @@ services:
   pgadmin:
     image: dpage/pgadmin4
     container_name: ai_onboarding_pgadmin
+    restart: always
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@example.com
       PGADMIN_DEFAULT_PASSWORD: admin
