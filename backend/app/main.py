@@ -68,12 +68,6 @@ app.add_middleware(
 app.include_router(analysis_router)
 
 
-# ================= HEALTH CHECK =================
-@app.get("/api/v1/health")
-async def health_check():
-    return {"status": "healthy"}
-
-
 # ================= ROOT =================
 @app.get("/")
 async def root():
