@@ -13,6 +13,7 @@ from app.core.database import init_db
 from app.routes.analysis_routes import router as analysis_router
 from app.routes.auth_routes import router as auth_router
 from app.routes.admin_routes import router as admin_router
+from app.routes.bulk_routes import router as bulk_router
 from app.routes.metrics_routes import router as metrics_router
 from app.middleware.rate_limiting import limiter
 
@@ -165,6 +166,7 @@ async def shutdown_event():
 app.include_router(auth_router)       # Auth routes (login, register, etc.)
 app.include_router(analysis_router)   # Analysis routes
 app.include_router(admin_router)      # Admin routes (user management)
+app.include_router(bulk_router)       # Bulk operations routes (Phase 4)
 app.include_router(metrics_router)    # Metrics and monitoring endpoints
 
 
@@ -223,8 +225,22 @@ async def root():
             "auth_me": "GET /api/v1/auth/me",
             "analyze": "POST /api/v1/analyze",
             "get_analysis": "GET /api/v1/analysis/{id}",
-            "user_analyses": "GET /api/v1/users/{user_id}/analyses",
-            "admin_users": "GET /api/v1/admin/users",
+            "user_analyses": "GET /api/v1/users/{user_id}/analyses (with pagination, filtering, sorting, search)",
+            "admin_users": "GET /api/v1/admin/users (with pagination, filtering, sorting, search)",
+            "bulk_users_create": "POST /api/v1/bulk/users/create",
+            "bulk_users_update": "POST /api/v1/bulk/users/update",
+            "bulk_users_delete": "POST /api/v1/bulk/users/delete",
+            "bulk_analyses_create": "POST /api/v1/bulk/analyses/create",
+            "bulk_analyses_update": "POST /api/v1/bulk/analyses/update",
+            "bulk_analyses_delete": "POST /api/v1/bulk/analyses/delete",
+            "bulk_analyses_upsert": "POST /api/v1/bulk/analyses/upsert",
+        },
+        "features": {
+            "pagination": "All list endpoints support skip/limit pagination",
+            "filtering": "Endpoints support advanced filtering and sorting",
+            "search": "Full-text search on text fields",
+            "bulk_operations": "Create, update, delete multiple items atomically",
+            "api_documentation": "/api/v1/docs (Swagger UI) or /api/v1/redoc (ReDoc)"
         }
     }
 

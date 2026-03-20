@@ -25,6 +25,7 @@ class RateLimits:
     # Main endpoints (moderate)
     ANALYZE = "10/minute"       # 10 analyses per minute
     HEALTH = "60/minute"        # 60 health checks per minute
+    BULK_OPERATIONS = "5/minute"  # 5 bulk operations per minute
     
     # General API (relaxed)
     GENERAL = f"{settings.RATE_LIMIT_REQUESTS_PER_MINUTE}/minute"

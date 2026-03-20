@@ -3,13 +3,16 @@ API routes for skill analysis endpoints.
 Requires JWT authentication for all endpoints except health check.
 """
 
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.auth import get_current_user, get_current_user_or_admin
 from app.models.user import User
 from app.models.analysis import Analysis
 from app.schemas.analysis_schema import AnalysisResponse, AnalysisCreate
+from app.schemas.pagination import PaginationParams, PaginatedResponse, SortDirection
+from app.core.filters import FilterOperator, QueryFilter, ValidFieldChecker, SortBuilder
+from app.core.search import FullTextSearchEngine, SearchMode
 from app.utils.file_handler import process_and_validate_file
 from app.services.skill_extractor import SkillExtractor
 from app.services.skill_gap import SkillGapAnalyzer
@@ -202,26 +205,47 @@ async def get_analysis(
 @limiter.limit(RateLimits.GENERAL)
 async def get_user_analyses(
     user_id: int,
+    skip: int = Query(0, ge=0, description="Number of items to skip"),
+    limit: int = Query(10, ge=1, le=100, description="Number of items to return"),
+    sort_by: Optional[str] = Query(None, description="Field to sort by (created_at, id)"),
+    sort_order: str = Query("desc", regex="^(asc|desc)$", description="Sort order"),
+    search: Optional[str] = Query(None, description="Search in resume and JD text"),
+    filter_by_skills: Optional[List[str]] = Query(None, description="Filter by missing skills"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Get all analyses for a user.
+    Get all analyses for a user with pagination, sorting, filtering, and search.
     
     **Authentication Required**: JWT Bearer token
     
     Users can list their own analyses, admins can list any user's analyses.
     
+    **Features**:
+    - Pagination: skip/limit parameters
+    - Sorting: sort_by (created_at, id) with asc/desc
+    - Filtering: filter_by_skills to find analyses with specific missing skills
+    - Search: Full-text search across resume and JD text
+    
     Args:
         user_id: User ID to get analyses for
+        skip: Number of items to skip (pagination)
+        limit: Number of items to return (pagination, max 100)
+        sort_by: Field to sort by (created_at, id)
+        sort_order: Sort order (asc or desc)
+        search: Search term for full-text search
+        filter_by_skills: List of skills to filter by
         current_user: Authenticated user (via JWT token)
         db: Database session
         
     Returns:
-        List of user's analyses
+        Paginated list of user's analyses with total count and metadata
         
     Raises:
         HTTPException: If user not found or unauthorized
+        
+    Example:
+        GET /api/v1/users/1/analyses?skip=0&limit=10&sort_by=created_at&sort_order=desc&search=python&filter_by_skills=Python&filter_by_skills=Docker
     """
     # Check authorization
     if user_id != current_user.id and current_user.role.value != "admin":
@@ -237,20 +261,72 @@ async def get_user_analyses(
             detail="User not found"
         )
     
-    analyses = db.query(Analysis).filter(Analysis.user_id == user_id).all()
+    # Start with base query
+    query = db.query(Analysis).filter(Analysis.user_id == user_id)
+    
+    # Apply search
+    if search:
+        search_engine = FullTextSearchEngine(Analysis)
+        search_engine.add_field(Analysis.resume_text, weight=1.5)
+        search_engine.add_field(Analysis.jd_text, weight=1.5)
+        
+        # Build search expression for resume and JD
+        search_expr = search_engine.builder.search(search, SearchMode.SIMPLE)
+        if search_expr:
+            query = query.filter(search_expr)
+    
+    # Get total before pagination
+    total = query.count()
+    
+    # Apply sorting
+    if sort_by:
+        valid_fields = ValidFieldChecker(Analysis)
+        if valid_fields.is_valid(sort_by):
+            if sort_order.lower() == "desc":
+                query = query.order_by(getattr(Analysis, sort_by).desc())
+            else:
+                query = query.order_by(getattr(Analysis, sort_by).asc())
+        else:
+            # Default to created_at desc
+            query = query.order_by(Analysis.created_at.desc())
+    else:
+        # Default sorting
+        query = query.order_by(Analysis.created_at.desc())
+    
+    # Apply pagination
+    analyses = query.offset(skip).limit(limit).all()
+    
+    # Build response
+    analyses_list = [
+        {
+            "analysis_id": a.id,
+            "created_at": a.created_at.isoformat(),
+            "updated_at": a.updated_at.isoformat() if a.updated_at else None,
+            "match_percentage": len(a.matched_skills) / len(a.extracted_jd_skills) * 100 if a.extracted_jd_skills else 0,
+            "missing_skills_count": len(a.missing_skills),
+            "matched_skills_count": len(a.matched_skills),
+            "total_jd_skills": len(a.extracted_jd_skills),
+            "missing_skills": a.missing_skills[:5] if a.missing_skills else [],  # First 5
+        }
+        for a in analyses
+    ]
+    
+    page = (skip // limit) + 1 if limit > 0 else 1
+    pages = (total + limit - 1) // limit if limit > 0 else 0
     
     return {
         "user_id": user_id,
-        "analyses_count": len(analyses),
-        "analyses": [
-            {
-                "analysis_id": a.id,
-                "created_at": a.created_at.isoformat(),
-                "match_percentage": len(a.matched_skills) / len(a.extracted_jd_skills) * 100 if a.extracted_jd_skills else 0,
-                "missing_skills_count": len(a.missing_skills),
-            }
-            for a in analyses
-        ]
+        "data": analyses_list,
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+        "page": page,
+        "pages": pages,
+        "has_next": (skip + limit) < total,
+        "has_prev": skip > 0,
+        "search_query": search,
+        "sort_by": sort_by or "created_at",
+        "sort_order": sort_order
     }
 
 

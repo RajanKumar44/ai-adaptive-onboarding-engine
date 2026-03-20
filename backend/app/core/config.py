@@ -119,6 +119,99 @@ class Settings(BaseSettings):
     PROFILING_SAMPLE_RATE: float = float(os.getenv("PROFILING_SAMPLE_RATE", "0.1"))  # 10% of requests
     SLOW_QUERY_THRESHOLD_MS: float = float(os.getenv("SLOW_QUERY_THRESHOLD_MS", "1000"))  # 1 second
     
+    # ============================================================================
+    # PAGINATION CONFIGURATION (PHASE 4)
+    # ============================================================================
+    # Default pagination settings
+    DEFAULT_PAGE_SIZE: int = int(os.getenv("DEFAULT_PAGE_SIZE", "10"))
+    MAX_PAGE_SIZE: int = int(os.getenv("MAX_PAGE_SIZE", "100"))
+    MIN_PAGE_SIZE: int = int(os.getenv("MIN_PAGE_SIZE", "1"))
+    
+    # Pagination presets for different entity types
+    PAGINATION_SMALL_DEFAULT: int = 10  # Users, roles
+    PAGINATION_SMALL_MAX: int = 50
+    
+    PAGINATION_MEDIUM_DEFAULT: int = 25  # Analyses, results
+    PAGINATION_MEDIUM_MAX: int = 100
+    
+    PAGINATION_LARGE_DEFAULT: int = 50  # Logs, events
+    PAGINATION_LARGE_MAX: int = 500
+    
+    PAGINATION_VERY_LARGE_DEFAULT: int = 100  # Audit logs
+    PAGINATION_VERY_LARGE_MAX: int = 1000
+    
+    # ============================================================================
+    # FILTERING & SORTING CONFIGURATION (PHASE 4)
+    # ============================================================================
+    # Supported filter operators
+    ALLOWED_FILTER_OPERATORS: list = ["eq", "ne", "gt", "gte", "lt", "lte", "like", "in", "between", "is_null"]
+    
+    # Maximum number of filters per query
+    MAX_FILTERS_PER_QUERY: int = 10
+    
+    # Maximum values for IN filter
+    MAX_IN_FILTER_VALUES: int = 100
+    
+    # Fields that cannot be filtered
+    FIELDS_EXCLUDE_FROM_FILTER: list = ["password_hash", "reasoning_trace"]
+    
+    # Default sort direction
+    DEFAULT_SORT_ORDER: str = "desc"  # asc or desc
+    
+    # Maximum number of sort fields
+    MAX_SORT_FIELDS: int = 3
+    
+    # ============================================================================
+    # SEARCH CONFIGURATION (PHASE 4)
+    # ============================================================================
+    # Search modes
+    SEARCH_MODES_ENABLED: list = ["simple", "phrase", "boolean", "fuzzy"]
+    DEFAULT_SEARCH_MODE: str = "simple"
+    
+    # Search highlighting
+    SEARCH_HIGHLIGHT_TAG: str = "mark"  # em, strong, mark
+    SEARCH_HIGHLIGHT_ENABLED: bool = True
+    
+    # Full-text search settings
+    MIN_SEARCH_LENGTH: int = 2
+    MAX_SEARCH_LENGTH: int = 500
+    
+    # Search timeout (seconds)
+    SEARCH_TIMEOUT_SECONDS: float = 5.0
+    
+    # ============================================================================
+    # BULK OPERATIONS CONFIGURATION (PHASE 4)
+    # ============================================================================
+    # Batch size for bulk operations
+    BULK_OPERATION_BATCH_SIZE: int = 100
+    
+    # Maximum items per bulk operation request
+    BULK_OPERATION_MAX_ITEMS: int = 1000
+    
+    # Atomic vs partial mode settings
+    BULK_OPERATION_ATOMIC_DEFAULT: bool = True
+    
+    # Rate limiting for bulk operations
+    BULK_OPERATION_RATE_LIMIT: str = "5/minute"
+    
+    # ============================================================================
+    # API DOCUMENTATION CONFIGURATION (PHASE 4)
+    # ============================================================================
+    # OpenAPI/Swagger settings
+    OPENAPI_ENABLED: bool = os.getenv("OPENAPI_ENABLED", "True").lower() == "true"
+    OPENAPI_URL: str = "/openapi.json"
+    DOCS_URL: str = "/docs"
+    REDOC_URL: str = "/redoc"
+    
+    # API documentation title and version
+    API_DOCS_TITLE: str = "AI Adaptive Onboarding Engine API"
+    API_DOCS_DESCRIPTION: str = "Advanced API for skill analysis and learning path generation"
+    API_DOCS_VERSION: str = "1.0.0"
+    
+    # Enable example values in API docs
+    INCLUDE_REQUEST_EXAMPLES: bool = True
+    INCLUDE_RESPONSE_EXAMPLES: bool = True
+    
     class Config:
         """Pydantic config."""
         env_file = ".env"
