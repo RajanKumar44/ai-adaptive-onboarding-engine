@@ -28,6 +28,12 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # 🟢 Soft delete / active user
+    # NOTE:
+    # - This column (and any future columns) will NOT be added automatically to an
+    #   existing "users" table when using Base.metadata.create_all(...).
+    # - When introducing this field into an already-deployed environment, you must
+    #   either run a proper DB migration (e.g. via Alembic) or explicitly recreate
+    #   the database/volume so that the column exists in the underlying schema.
     is_active = Column(Boolean, default=True, nullable=False)
 
     # 🔗 Relationship
