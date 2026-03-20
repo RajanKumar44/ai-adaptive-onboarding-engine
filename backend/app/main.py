@@ -15,6 +15,7 @@ from app.routes.auth_routes import router as auth_router
 from app.routes.admin_routes import router as admin_router
 from app.routes.bulk_routes import router as bulk_router
 from app.routes.metrics_routes import router as metrics_router
+from app.routes.llm_routes import router as llm_router
 from app.middleware.rate_limiting import limiter
 
 # Import logging and monitoring modules (Phase 3)
@@ -168,6 +169,7 @@ app.include_router(analysis_router)   # Analysis routes
 app.include_router(admin_router)      # Admin routes (user management)
 app.include_router(bulk_router)       # Bulk operations routes (Phase 4)
 app.include_router(metrics_router)    # Metrics and monitoring endpoints
+app.include_router(llm_router)        # LLM integration routes (Phase 6)
 
 
 # ============================================================================
