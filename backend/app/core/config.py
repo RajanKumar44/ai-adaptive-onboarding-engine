@@ -52,6 +52,7 @@ class Settings(BaseSettings):
 
     # ================= RATE LIMITING =================
     RATE_LIMIT_REQUESTS_PER_MINUTE: int = 60
+    RATE_LIMIT_REQUESTS_PER_HOUR: int = 1000
 
     class Config:
         env_file = ".env"

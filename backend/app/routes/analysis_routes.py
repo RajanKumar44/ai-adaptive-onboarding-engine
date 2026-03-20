@@ -3,7 +3,7 @@ API routes for skill analysis endpoints.
 Requires JWT authentication for all endpoints except health check.
 """
 
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status, Query
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status, Query, Request
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.auth import get_current_user, get_current_user_or_admin
@@ -28,6 +28,7 @@ router = APIRouter(prefix="/api/v1", tags=["analysis"])
 @router.post("/analyze", response_model=dict, status_code=200)
 @limiter.limit(RateLimits.ANALYZE)
 async def analyze_resume_and_jd(
+    request: Request,
     resume_file: UploadFile = File(...),
     jd_file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
@@ -151,6 +152,7 @@ async def analyze_resume_and_jd(
 @router.get("/analysis/{analysis_id}", response_model=dict)
 @limiter.limit(RateLimits.GENERAL)
 async def get_analysis(
+    request: Request,
     analysis_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -204,6 +206,7 @@ async def get_analysis(
 @router.get("/users/{user_id}/analyses")
 @limiter.limit(RateLimits.GENERAL)
 async def get_user_analyses(
+    request: Request,
     user_id: int,
     skip: int = Query(0, ge=0, description="Number of items to skip"),
     limit: int = Query(10, ge=1, le=100, description="Number of items to return"),
@@ -332,7 +335,7 @@ async def get_user_analyses(
 
 @router.get("/health")
 @limiter.limit(RateLimits.HEALTH)
-async def health_check():
+async def health_check(request: Request):
     """
     Health check endpoint for monitoring.
     Public endpoint (no authentication required).
