@@ -2,13 +2,14 @@
 Analysis model for storing skill analysis results.
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, Text
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, Text, Index, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.core.database import Base
+from app.models.base import AuditedBase
 
 
-class Analysis(Base):
+class Analysis(Base, AuditedBase):
     """
     Analysis model for storing resume and job description analysis results.
     
@@ -24,13 +25,16 @@ class Analysis(Base):
         learning_path: Personalized adaptive learning roadmap (JSON)
         reasoning_trace: Reasoning for each recommendation (JSON)
         created_at: Analysis creation timestamp
+        created_by: User ID who created this analysis
         updated_at: Last update timestamp
+        updated_by: User ID who last updated this analysis
+        deleted_at: When analysis was soft deleted
         user: Relationship to User
     """
     __tablename__ = "analyses"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     
     # Input data
     resume_text = Column(Text, nullable=False)
@@ -48,9 +52,12 @@ class Analysis(Base):
     learning_path = Column(JSON, nullable=False)  # Detailed learning roadmap
     reasoning_trace = Column(JSON, nullable=False)  # Reasoning for each recommendation
     
-    # Metadata
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
     # Relationship to User
     user = relationship("User", back_populates="analyses")
+    
+    # Indexes for frequently queried fields
+    __table_args__ = (
+        Index('ix_analyses_user_id_not_deleted', 'user_id', 'deleted_at'),
+        Index('ix_analyses_created_at', 'created_at'),
+        Index('ix_analyses_user_created', 'user_id', 'created_at'),
+    )

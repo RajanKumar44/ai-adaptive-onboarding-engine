@@ -1,0 +1,201 @@
+version: '3.8'
+
+# Docker Compose for AI Adaptive Onboarding Engine
+# PHASE 2: Database & Persistence with Docker
+# 
+# Services:
+# - db: PostgreSQL database with persistence
+# - app: FastAPI backend application
+# - adminer: Database admin UI (optional, for development)
+#
+# Usage:
+#   docker-compose up -d          Start services
+#   docker-compose down           Stop services
+#   docker-compose logs -f        Follow logs
+#   docker-compose ps            Show running services
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: ai-onboarding-db
+    
+    # Environment variables
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-ai_onboarding}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+    
+    # Ports
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    
+    # Volumes for data persistence
+    volumes:
+      # Main data volume for PostgreSQL files
+      - postgres_data:/var/lib/postgresql/data
+      
+      # Optional: Custom initialization script
+      - ./backend/scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      
+      # Optional: Backups directory
+      - ./backups:/backups
+    
+    # Health check
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-ai_onboarding}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Networks
+    networks:
+      - app-network
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  
+  # FastAPI Backend Application
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    
+    container_name: ai-onboarding-app
+    
+    # Environment variables
+    environment:
+      # App settings
+      APP_ENV: ${APP_ENV:-development}
+      APP_NAME: "AI Adaptive Onboarding Engine"
+      DEBUG: ${DEBUG:-true}
+      
+      # Database settings
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_HOST: ${POSTGRES_HOST:-db}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-ai_onboarding}
+      
+      # Database initialization
+      INIT_DB: ${INIT_DB:-true}
+      ALEMBIC_UPGRADE: ${ALEMBIC_UPGRADE:-false}
+      
+      # LLM Configuration
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-3-sonnet-20240229}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-1.5-pro}
+      
+      # Caching
+      CACHE_STRATEGY: ${CACHE_STRATEGY:-memory}
+      CACHE_TTL_SECONDS: ${CACHE_TTL_SECONDS:-3600}
+      
+      # Security
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-secret-key-change-in-production}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
+    
+    # Ports
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    
+    # Volumes
+    volumes:
+      # Application code (for development with auto-reload)
+      - ./backend:/app
+      
+      # Preserve uploads directory
+      - app_uploads:/app/uploads
+      
+      # Preserve logs directory
+      - app_logs:/app/logs
+      
+      # Backups
+      - ./backups:/app/backups
+      
+      # Exclude certain directories from volume mount
+      - /app/__pycache__
+      - /app/.pytest_cache
+    
+    # Dependencies
+    depends_on:
+      db:
+        condition: service_healthy
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Networks
+    networks:
+      - app-network
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  
+  # Optional: Adminer for database management UI
+  # Access at http://localhost:8080
+  adminer:
+    image: adminer:latest
+    container_name: ai-onboarding-adminer
+    
+    ports:
+      - "8080:8080"
+    
+    depends_on:
+      - db
+    
+    networks:
+      - app-network
+    
+    restart: unless-stopped
+    
+    # Only start in development
+    profiles:
+      - dev
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+# Volumes for data persistence
+volumes:
+  postgres_data:
+    driver: local
+  app_uploads:
+    driver: local
+  app_logs:
+    driver: local
+
+# Networks
+networks:
+  app-network:
+    driver: bridge

@@ -2,10 +2,11 @@
 User model for database persistence.
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Enum
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Enum, Index
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.core.database import Base
+from app.models.base import AuditedBase
 import enum
 
 
@@ -18,7 +19,7 @@ class UserRole(str, enum.Enum):
     GUEST = "guest"           # Read-only access
 
 
-class User(Base):
+class User(Base, AuditedBase):
     """
     User model for storing user information.
     
@@ -30,7 +31,10 @@ class User(Base):
         role: User's role for access control (admin, user, guest)
         is_active: Whether the user account is active
         created_at: Account creation timestamp
+        created_by: User ID who created this account
         updated_at: Last profile update timestamp
+        updated_by: User ID who last updated this account
+        deleted_at: When account was soft deleted (NULL if active)
         analyses: Relationship to Analysis records
     """
     __tablename__ = "users"
@@ -40,9 +44,20 @@ class User(Base):
     name = Column(String(255), nullable=True)
     password_hash = Column(String(255), nullable=True)
     role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
-    is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False, index=True)
     
     # Relationship to Analysis records
     analyses = relationship("Analysis", back_populates="user", cascade="all, delete-orphan")
+    
+    # Indexes for frequently queried fields
+    __table_args__ = (
+        Index('ix_users_email_not_deleted', 'email', 'deleted_at'),
+        Index('ix_users_active_deleted', 'is_active', 'deleted_at'),
+        Index('ix_users_created_at', 'created_at'),
+        Index('ix_users_role', 'role'),
+    )
+    
+    @property
+    def is_deleted(self) -> bool:
+        """Check if user is soft deleted."""
+        return self.deleted_at is not None
