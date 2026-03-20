@@ -6,9 +6,13 @@ Initializes the application with all dependencies and routes.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
 from app.core.config import get_settings
 from app.core.database import init_db
 from app.routes.analysis_routes import router as analysis_router
+from app.routes.auth_routes import router as auth_router
+from app.middleware.rate_limiting import limiter
 
 # Initialize settings
 settings = get_settings()
@@ -16,20 +20,24 @@ settings = get_settings()
 # Create FastAPI app
 app = FastAPI(
     title=settings.APP_NAME,
-    description="Complete backend system for AI Adaptive Onboarding Engine",
+    description="Complete backend system for AI Adaptive Onboarding Engine with JWT Authentication",
     version=settings.APP_VERSION,
     docs_url="/api/v1/docs",
     redoc_url="/api/v1/redoc",
     openapi_url="/api/v1/openapi.json",
 )
 
-# Add CORS middleware for frontend integration
+# Add rate limiter
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Add CORS middleware with configured origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify allowed origins
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
+    allow_methods=settings.CORS_ALLOW_METHODS,
+    allow_headers=settings.CORS_ALLOW_HEADERS,
 )
 
 # Add trusted host middleware for security
@@ -53,7 +61,8 @@ async def startup_event():
 
 
 # Include routers
-app.include_router(analysis_router)
+app.include_router(auth_router)      # Auth routes (login, register, etc.)
+app.include_router(analysis_router)   # Analysis routes
 
 
 # Root endpoint
@@ -71,7 +80,12 @@ async def root():
         "status": "running",
         "docs": "/api/v1/docs",
         "endpoints": {
-            "health": "/api/v1/health",
+            "auth_register": "POST /api/v1/auth/register",
+            "auth_login": "POST /api/v1/auth/login",
+            "auth_refresh": "POST /api/v1/auth/refresh",
+            "auth_logout": "POST /api/v1/auth/logout",
+            "auth_me": "GET /api/v1/auth/me",
+            "health": "GET /api/v1/health",
             "create_user": "POST /api/v1/users",
             "analyze": "POST /api/v1/analyze",
             "get_analysis": "GET /api/v1/analysis/{id}",

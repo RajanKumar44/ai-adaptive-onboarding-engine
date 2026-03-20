@@ -1,63 +1,39 @@
 """
 API routes for skill analysis endpoints.
+Requires JWT authentication for all endpoints except health check.
 """
 
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Form
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
+from app.core.auth import get_current_user, get_current_user_or_admin
 from app.models.user import User
 from app.models.analysis import Analysis
-from app.schemas.user_schema import UserCreate, UserResponse
 from app.schemas.analysis_schema import AnalysisResponse, AnalysisCreate
 from app.utils.file_handler import process_and_validate_file
 from app.services.skill_extractor import SkillExtractor
 from app.services.skill_gap import SkillGapAnalyzer
 from app.services.learning_path import LearningPathGenerator
 from app.services.resume_parser import ResumeParser
+from app.middleware.rate_limiting import RateLimits, limiter
 from typing import List, Optional
 import json
 
 router = APIRouter(prefix="/api/v1", tags=["analysis"])
 
 
-@router.post("/users", response_model=UserResponse, status_code=201)
-async def create_user(
-    user: UserCreate,
-    db: Session = Depends(get_db)
-):
-    """
-    Create a new user account.
-    
-    Args:
-        user: User creation data
-        db: Database session
-        
-    Returns:
-        Created user information
-    """
-    # Check if user already exists
-    existing_user = db.query(User).filter(User.email == user.email).first()
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    # Create new user
-    db_user = User(email=user.email, name=user.name)
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    
-    return db_user
-
-
 @router.post("/analyze", response_model=dict, status_code=200)
+@limiter.limit(RateLimits.ANALYZE)
 async def analyze_resume_and_jd(
-    user_id: int = Form(...),
     resume_file: UploadFile = File(...),
     jd_file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Analyze resume and job description to identify skill gaps and generate learning path.
+    
+    **Authentication Required**: JWT Bearer token
     
     This endpoint:
     1. Extracts text from resume and JD files
@@ -68,26 +44,27 @@ async def analyze_resume_and_jd(
     6. Returns complete analysis with reasoning
     
     Args:
-        user_id: User ID performing analysis
         resume_file: Uploaded resume (PDF or TXT)
         jd_file: Uploaded job description (PDF or TXT)
+        current_user: Authenticated user (via JWT token)
         db: Database session
         
     Returns:
         Complete analysis with skills, gaps, and learning path
+        
+    Raises:
+        HTTPException: If files invalid, user not authenticated, or processing fails
     """
-    
-    # Verify user exists
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
     
     # Extract text from files
     resume_text = await process_and_validate_file(resume_file)
     jd_text = await process_and_validate_file(jd_file)
     
     if not resume_text or not jd_text:
-        raise HTTPException(status_code=400, detail="Failed to extract text from files")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to extract text from files"
+        )
     
     # Extract skills from both documents
     resume_skills = SkillExtractor.rule_based_extraction(resume_text)
@@ -132,7 +109,7 @@ async def analyze_resume_and_jd(
     
     # Store analysis in database
     db_analysis = Analysis(
-        user_id=user_id,
+        user_id=current_user.id,
         resume_text=resume_text,
         jd_text=jd_text,
         extracted_resume_skills=resume_skills,
@@ -150,7 +127,7 @@ async def analyze_resume_and_jd(
     # Prepare response
     return {
         "analysis_id": db_analysis.id,
-        "user_id": user_id,
+        "user_id": current_user.id,
         "resume_skills": resume_skills,
         "jd_skills": jd_skills,
         "matched_skills": gap_report["matched_skills"],
@@ -169,24 +146,44 @@ async def analyze_resume_and_jd(
 
 
 @router.get("/analysis/{analysis_id}", response_model=dict)
+@limiter.limit(RateLimits.GENERAL)
 async def get_analysis(
     analysis_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Retrieve a previously performed analysis.
     
+    **Authentication Required**: JWT Bearer token
+    
+    Users can only access their own analyses, admins can access any.
+    
     Args:
         analysis_id: ID of the analysis to retrieve
+        current_user: Authenticated user (via JWT token)
         db: Database session
         
     Returns:
         Stored analysis data
+        
+    Raises:
+        HTTPException: If analysis not found or unauthorized
     """
     analysis = db.query(Analysis).filter(Analysis.id == analysis_id).first()
     
     if not analysis:
-        raise HTTPException(status_code=404, detail="Analysis not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Analysis not found"
+        )
+    
+    # Check authorization: user can view own analyses, admin can view all
+    if analysis.user_id != current_user.id and current_user.role.value != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to view this analysis"
+        )
     
     return {
         "analysis_id": analysis.id,
@@ -202,23 +199,43 @@ async def get_analysis(
 
 
 @router.get("/users/{user_id}/analyses")
+@limiter.limit(RateLimits.GENERAL)
 async def get_user_analyses(
     user_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Get all analyses for a user.
     
+    **Authentication Required**: JWT Bearer token
+    
+    Users can list their own analyses, admins can list any user's analyses.
+    
     Args:
-        user_id: User ID
+        user_id: User ID to get analyses for
+        current_user: Authenticated user (via JWT token)
         db: Database session
         
     Returns:
         List of user's analyses
+        
+    Raises:
+        HTTPException: If user not found or unauthorized
     """
+    # Check authorization
+    if user_id != current_user.id and current_user.role.value != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to view this user's analyses"
+        )
+    
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
     
     analyses = db.query(Analysis).filter(Analysis.user_id == user_id).all()
     
@@ -238,9 +255,11 @@ async def get_user_analyses(
 
 
 @router.get("/health")
+@limiter.limit(RateLimits.HEALTH)
 async def health_check():
     """
     Health check endpoint for monitoring.
+    Public endpoint (no authentication required).
     
     Returns:
         Status message
