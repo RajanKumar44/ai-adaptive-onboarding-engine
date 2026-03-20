@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "AI Adaptive Onboarding Engine"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
+    APP_ENV: str = "development"
 
     # ================= API =================
     API_PREFIX: str = "/api/v1"
@@ -42,10 +43,20 @@ class Settings(BaseSettings):
     # ================= AI =================
     LLM_PROVIDER: str = "openai"
     LLM_API_KEY: str = ""
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4"
+    ANTHROPIC_API_KEY: str = ""
+    ANTHROPIC_MODEL: str = "claude-3-sonnet-20240229"
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-1.5-pro"
+
+    # ================= RATE LIMITING =================
+    RATE_LIMIT_REQUESTS_PER_MINUTE: int = 60
 
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"  # Ignore extra fields from environment variables
 
 
 @lru_cache()

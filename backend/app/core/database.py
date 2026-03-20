@@ -56,15 +56,15 @@ def receive_engine_disposed(engine):
     logger.info("Database engine connection pool disposed")
 
 
-@event.listens_for(engine, "pool_connect")
-def receive_pool_connect(dbapi_conn, connection_record):
-    """Log successful pool connection."""
+@event.listens_for(engine, "connect")
+def receive_connect(dbapi_conn, connection_record):
+    """Log successful connection."""
     logger.debug("New database connection established")
 
 
-@event.listens_for(engine, "pool_checkout")
-def receive_pool_checkout(dbapi_conn, connection_record, connection_proxy):
-    """Log pool checkout."""
+@event.listens_for(engine, "checkout")
+def receive_checkout(dbapi_conn, connection_record, connection_proxy):
+    """Log connection checkout."""
     logger.debug("Database connection checked out from pool")
 
 

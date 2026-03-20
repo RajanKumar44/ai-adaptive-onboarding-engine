@@ -7,9 +7,10 @@ Provides pagination support for list endpoints with:
 - Default pagination settings
 """
 
-from pydantic import BaseModel, Field
-from typing import List, TypeVar, Generic, Optional, Any
+from pydantic import BaseModel, Field, ConfigDict
+from typing import List, TypeVar, Generic, Optional, Any, Literal
 from math import ceil
+from enum import Enum
 
 T = TypeVar('T')
 
@@ -34,7 +35,7 @@ class PaginationParams(BaseModel):
         return self.limit
 
 
-class SortOrder(str):
+class SortOrder(str, Enum):
     """Sort order enumeration"""
     ASC = "asc"
     DESC = "desc"
@@ -42,6 +43,8 @@ class SortOrder(str):
 
 class SortParam(BaseModel):
     """Sort parameter"""
+    
+    model_config = ConfigDict(use_enum_values=True)
     
     field: str = Field(description="Field name to sort by")
     order: SortOrder = Field(default=SortOrder.ASC, description="Sort order (asc or desc)")

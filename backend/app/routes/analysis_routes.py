@@ -10,7 +10,7 @@ from app.core.auth import get_current_user, get_current_user_or_admin
 from app.models.user import User
 from app.models.analysis import Analysis
 from app.schemas.analysis_schema import AnalysisResponse, AnalysisCreate
-from app.schemas.pagination import PaginationParams, PaginatedResponse, SortDirection
+from app.schemas.pagination import PaginationParams, PaginatedResponse, SortOrder
 from app.core.filters import FilterOperator, QueryFilter, ValidFieldChecker, SortBuilder
 from app.core.search import FullTextSearchEngine, SearchMode
 from app.utils.file_handler import process_and_validate_file
