@@ -8,6 +8,14 @@ Built with:
 - PostgreSQL for persistence
 - Docker Compose for reproducible local setup
 
+## Demo Video
+
+<video controls width="100%" src="https://drive.google.com/uc?export=download&id=1Xsc2-iNr4ekyOFj4X9IFPzxEQ4TTVt_D">
+  Your browser does not support embedded video playback.
+</video>
+
+Direct link: https://drive.google.com/file/d/1Xsc2-iNr4ekyOFj4X9IFPzxEQ4TTVt_D/view?usp=drivesdk
+
 ## Why This Project Matters
 
 Traditional onboarding is static and role-agnostic. This project makes onboarding:
