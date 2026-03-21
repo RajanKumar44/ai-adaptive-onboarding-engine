@@ -9,6 +9,7 @@ from app.core.database import get_db
 from app.core.auth import get_current_user, get_current_user_or_admin
 from app.models.user import User
 from app.models.analysis import Analysis
+from app.models.feedback import AnalysisFeedback
 from app.schemas.analysis_schema import AnalysisResponse, AnalysisCreate
 from app.schemas.pagination import PaginationParams, PaginatedResponse, SortOrder
 from app.core.filters import FilterOperator, QueryFilter, ValidFieldChecker, SortBuilder
@@ -21,8 +22,14 @@ from app.services.resume_parser import ResumeParser
 from app.middleware.rate_limiting import RateLimits, limiter
 from typing import List, Optional
 import json
+from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/v1", tags=["analysis"])
+
+
+class AnalysisFeedbackRequest(BaseModel):
+    rating: int = Field(..., ge=1, le=5, description="Satisfaction rating from 1 to 5")
+    comment: Optional[str] = Field(default=None, max_length=1000)
 
 
 @router.post("/analyze", response_model=dict, status_code=200)
@@ -190,6 +197,11 @@ async def get_analysis(
             detail="You don't have permission to view this analysis"
         )
     
+    owner_feedback = db.query(AnalysisFeedback).filter(
+        AnalysisFeedback.analysis_id == analysis.id,
+        AnalysisFeedback.user_id == analysis.user_id,
+    ).first()
+
     return {
         "analysis_id": analysis.id,
         "user_id": analysis.user_id,
@@ -199,7 +211,67 @@ async def get_analysis(
         "missing_skills": analysis.missing_skills,
         "learning_path": analysis.learning_path,
         "reasoning": analysis.reasoning_trace,
+        "feedback_rating": owner_feedback.rating if owner_feedback else None,
+        "feedback_comment": owner_feedback.comment if owner_feedback else None,
         "created_at": analysis.created_at.isoformat(),
+    }
+
+
+@router.post("/analysis/{analysis_id}/feedback", response_model=dict)
+@limiter.limit(RateLimits.GENERAL)
+async def submit_analysis_feedback(
+    request: Request,
+    analysis_id: int,
+    payload: AnalysisFeedbackRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Submit or update user feedback for an analysis.
+
+    Users can only submit feedback for their own analyses.
+    """
+    analysis = db.query(Analysis).filter(Analysis.id == analysis_id).first()
+
+    if not analysis:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Analysis not found"
+        )
+
+    if analysis.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only submit feedback for your own analysis"
+        )
+
+    feedback = db.query(AnalysisFeedback).filter(
+        AnalysisFeedback.analysis_id == analysis_id,
+        AnalysisFeedback.user_id == current_user.id,
+    ).first()
+
+    if feedback:
+        feedback.rating = payload.rating
+        feedback.comment = payload.comment
+        action = "updated"
+    else:
+        feedback = AnalysisFeedback(
+            analysis_id=analysis_id,
+            user_id=current_user.id,
+            rating=payload.rating,
+            comment=payload.comment,
+        )
+        db.add(feedback)
+        action = "created"
+
+    db.commit()
+    db.refresh(feedback)
+
+    return {
+        "message": f"Feedback {action} successfully",
+        "analysis_id": analysis_id,
+        "rating": feedback.rating,
+        "comment": feedback.comment,
     }
 
 
@@ -300,8 +372,14 @@ async def get_user_analyses(
     analyses = query.offset(skip).limit(limit).all()
     
     # Build response
-    analyses_list = [
-        {
+    analyses_list = []
+    for a in analyses:
+        feedback = db.query(AnalysisFeedback).filter(
+            AnalysisFeedback.analysis_id == a.id,
+            AnalysisFeedback.user_id == user_id,
+        ).first()
+
+        analyses_list.append({
             "analysis_id": a.id,
             "created_at": a.created_at.isoformat(),
             "updated_at": a.updated_at.isoformat() if a.updated_at else None,
@@ -309,10 +387,11 @@ async def get_user_analyses(
             "missing_skills_count": len(a.missing_skills),
             "matched_skills_count": len(a.matched_skills),
             "total_jd_skills": len(a.extracted_jd_skills),
-            "missing_skills": a.missing_skills[:5] if a.missing_skills else [],  # First 5
-        }
-        for a in analyses
-    ]
+            "missing_skills": a.missing_skills[:5] if a.missing_skills else [],
+            "feedback_rating": feedback.rating if feedback else None,
+            "feedback_created_at": feedback.created_at.isoformat() if feedback and feedback.created_at else None,
+            "feedback_updated_at": feedback.updated_at.isoformat() if feedback and feedback.updated_at else None,
+        })
     
     page = (skip // limit) + 1 if limit > 0 else 1
     pages = (total + limit - 1) // limit if limit > 0 else 0

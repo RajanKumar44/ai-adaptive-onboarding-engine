@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Clock3, CheckCircle2, AlertTriangle, BookOpen, Target, Sparkles } from 'lucide-react'
+import { Clock3, CheckCircle2, AlertTriangle, BookOpen, Target, Sparkles, Star } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import { analysisAPI } from '../api/client'
@@ -10,6 +10,11 @@ export default function AnalysisResults() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [result, setResult] = useState(null)
+  const [feedbackRating, setFeedbackRating] = useState(0)
+  const [feedbackComment, setFeedbackComment] = useState('')
+  const [feedbackSaving, setFeedbackSaving] = useState(false)
+  const [feedbackMessage, setFeedbackMessage] = useState('')
+  const [showFeedbackReminder, setShowFeedbackReminder] = useState(false)
 
   useEffect(() => {
     const loadResult = async () => {
@@ -18,6 +23,10 @@ export default function AnalysisResults() {
         setError('')
         const response = await analysisAPI.getAnalysis(id)
         setResult(response.data)
+        const initialRating = Number(response?.data?.feedback_rating || 0)
+        setFeedbackRating(initialRating)
+        setFeedbackComment(response?.data?.feedback_comment || '')
+        setShowFeedbackReminder(!initialRating)
       } catch (err) {
         const message = err?.response?.data?.detail || 'Could not load analysis results.'
         setError(message)
@@ -80,6 +89,36 @@ export default function AnalysisResults() {
       })
     : 'N/A'
 
+  const handleSubmitFeedback = async () => {
+    if (!feedbackRating || feedbackRating < 1 || feedbackRating > 5) {
+      setFeedbackMessage('Please select a rating from 1 to 5 stars.')
+      return
+    }
+
+    try {
+      setFeedbackSaving(true)
+      setFeedbackMessage('')
+      await analysisAPI.submitFeedback(id, {
+        rating: feedbackRating,
+        comment: feedbackComment?.trim() || null,
+      })
+      setResult((prev) => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          feedback_rating: feedbackRating,
+          feedback_comment: feedbackComment?.trim() || '',
+        }
+      })
+      setShowFeedbackReminder(false)
+      setFeedbackMessage('Thanks for your feedback. Satisfaction metric has been updated.')
+    } catch (err) {
+      setFeedbackMessage(err?.response?.data?.detail || 'Could not submit feedback right now.')
+    } finally {
+      setFeedbackSaving(false)
+    }
+  }
+
   const priorityBadgeClass = {
     high: 'bg-red-100 text-red-700',
     medium: 'bg-yellow-100 text-yellow-700',
@@ -114,6 +153,62 @@ export default function AnalysisResults() {
 
             {!loading && !error && result && (
               <div className="mt-6 space-y-6">
+                {showFeedbackReminder && (
+                  <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center px-4">
+                    <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6">
+                      <h2 className="text-xl font-semibold text-gray-900">Quick Feedback Reminder</h2>
+                      <p className="text-sm text-gray-600 mt-2">
+                        Analysis is complete. Please add at least a star rating so satisfaction reports reflect real user outcomes.
+                      </p>
+
+                      <div className="flex items-center gap-2 mt-4 mb-3">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={`popup-${star}`}
+                            type="button"
+                            onClick={() => setFeedbackRating(star)}
+                            className="p-1"
+                            aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                          >
+                            <Star
+                              size={24}
+                              className={star <= feedbackRating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}
+                            />
+                          </button>
+                        ))}
+                        <span className="text-sm text-gray-700 ml-2">{feedbackRating ? `${feedbackRating}/5` : 'Select rating'}</span>
+                      </div>
+
+                      <textarea
+                        value={feedbackComment}
+                        onChange={(e) => setFeedbackComment(e.target.value)}
+                        rows={3}
+                        maxLength={1000}
+                        className="input w-full"
+                        placeholder="Optional comment"
+                      />
+
+                      <div className="mt-4 flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={handleSubmitFeedback}
+                          disabled={feedbackSaving}
+                          className="btn-primary px-4 py-2"
+                        >
+                          {feedbackSaving ? 'Submitting...' : 'Submit Feedback'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowFeedbackReminder(false)}
+                          className="btn-secondary px-4 py-2"
+                        >
+                          Remind Me Later
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <section className="card rounded-lg shadow-md p-6">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div>
@@ -387,6 +482,52 @@ export default function AnalysisResults() {
                       ))}
                     </div>
                   )}
+                </section>
+
+                <section className="card rounded-lg shadow-md p-6">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-2">Program Feedback</h2>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Rate this program outcome. Your feedback is used in the Satisfaction metric across users.
+                  </p>
+
+                  <div className="flex items-center gap-2 mb-4">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setFeedbackRating(star)}
+                        className="p-1"
+                        aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                      >
+                        <Star
+                          size={24}
+                          className={star <= feedbackRating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}
+                        />
+                      </button>
+                    ))}
+                    <span className="text-sm text-gray-700 ml-2">{feedbackRating ? `${feedbackRating}/5` : 'No rating selected'}</span>
+                  </div>
+
+                  <textarea
+                    value={feedbackComment}
+                    onChange={(e) => setFeedbackComment(e.target.value)}
+                    rows={4}
+                    maxLength={1000}
+                    className="input w-full"
+                    placeholder="Optional: share what worked well and what can be improved."
+                  />
+
+                  <div className="mt-4 flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleSubmitFeedback}
+                      disabled={feedbackSaving}
+                      className="btn-primary px-5 py-2"
+                    >
+                      {feedbackSaving ? 'Submitting...' : 'Submit Feedback'}
+                    </button>
+                    {feedbackMessage && <p className="text-sm text-gray-700">{feedbackMessage}</p>}
+                  </div>
                 </section>
               </div>
             )}

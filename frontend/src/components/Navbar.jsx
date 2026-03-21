@@ -1,5 +1,5 @@
 import React from 'react'
-import { Menu, LogOut, Home, FileText, User, BarChart3 } from 'lucide-react'
+import { Menu, LogOut, Home, FileText, User, BarChart3, MessageSquare } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
@@ -39,6 +39,12 @@ export default function Navbar() {
               <Link to="/admin" className="flex items-center space-x-1 text-gray-700 hover:text-blue-600 transition-colors">
                 <BarChart3 size={20} />
                 <span>Admin</span>
+              </Link>
+            )}
+            {user?.role === 'admin' && (
+              <Link to="/admin/feedback" className="flex items-center space-x-1 text-gray-700 hover:text-blue-600 transition-colors">
+                <MessageSquare size={20} />
+                <span>Feedback</span>
               </Link>
             )}
           </div>
@@ -81,6 +87,11 @@ export default function Navbar() {
             {user?.role === 'admin' && (
               <Link to="/admin" className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
                 Admin
+              </Link>
+            )}
+            {user?.role === 'admin' && (
+              <Link to="/admin/feedback" className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                Feedback Analytics
               </Link>
             )}
             <Link to="/profile" className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">

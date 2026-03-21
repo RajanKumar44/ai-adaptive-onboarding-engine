@@ -48,6 +48,7 @@ class User(Base, AuditedBase):
     
     # Relationship to Analysis records
     analyses = relationship("Analysis", back_populates="user", cascade="all, delete-orphan")
+    feedback_entries = relationship("AnalysisFeedback", back_populates="user", cascade="all, delete-orphan")
     
     # Indexes for frequently queried fields
     __table_args__ = (

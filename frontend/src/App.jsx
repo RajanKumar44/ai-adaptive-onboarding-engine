@@ -16,6 +16,7 @@ const AnalysisUpload = lazy(() => import('./pages/AnalysisUpload'))
 const AnalysisResults = lazy(() => import('./pages/AnalysisResults'))
 const UserProfile = lazy(() => import('./pages/UserProfile'))
 const AdminPanel = lazy(() => import('./pages/AdminPanel'))
+const AdminFeedbackAnalytics = lazy(() => import('./pages/AdminFeedbackAnalytics'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 
 // Protected Route wrapper
@@ -137,6 +138,14 @@ function AppContent() {
             element={
               <AdminRoute>
                 <AdminPanel />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/feedback"
+            element={
+              <AdminRoute>
+                <AdminFeedbackAnalytics />
               </AdminRoute>
             }
           />

@@ -50,11 +50,13 @@ export const analysisAPI = {
   }),
   getAnalysis: (id) => apiClient.get(`/analysis/${id}`),
   listAnalyses: (userId, params) => apiClient.get(`/users/${userId}/analyses`, { params }),
+  submitFeedback: (analysisId, data) => apiClient.post(`/analysis/${analysisId}/feedback`, data),
 }
 
 export const adminAPI = {
   listUsers: (params) => apiClient.get('/admin/users', { params }),
   getUserDetails: (id) => apiClient.get(`/admin/users/${id}`),
+  getFeedbackAnalytics: (params) => apiClient.get('/admin/feedback-analytics', { params }),
   updateUserRole: (id, newRole) => apiClient.put(`/admin/users/${id}/role`, null, {
     params: { new_role: newRole },
   }),

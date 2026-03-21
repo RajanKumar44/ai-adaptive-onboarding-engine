@@ -7,6 +7,10 @@ import { adminAPI, metricsAPI } from '../api/client'
 export default function AdminPanel() {
   const [users, setUsers] = useState([])
   const [status, setStatus] = useState('')
+  const [feedbackSummary, setFeedbackSummary] = useState({
+    response_count: 0,
+    weighted_satisfaction_percent: 0,
+  })
   const [error, setError] = useState('')
   const navigate = useNavigate()
 
@@ -14,12 +18,14 @@ export default function AdminPanel() {
     const loadData = async () => {
       setError('')
       try {
-        const [usersResponse, healthResponse] = await Promise.all([
+        const [usersResponse, healthResponse, feedbackResponse] = await Promise.all([
           adminAPI.listUsers({ limit: 5 }),
           metricsAPI.getHealth(),
+          adminAPI.getFeedbackAnalytics({ months: 6 }),
         ])
         setUsers(usersResponse?.data?.data || [])
         setStatus(healthResponse?.data?.status || 'unknown')
+        setFeedbackSummary(feedbackResponse?.data?.summary || { response_count: 0, weighted_satisfaction_percent: 0 })
       } catch (err) {
         setError(err?.response?.data?.detail || 'Unable to load admin data. Ensure you are logged in as admin.')
       }
@@ -40,7 +46,7 @@ export default function AdminPanel() {
             <h1 className="text-3xl font-bold text-gray-900">Admin Panel</h1>
             <p className="text-gray-600 mt-2">Administrative controls and user management are available here.</p>
 
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               <div className="card rounded-lg shadow-md p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-3">System Status</h2>
                 <p className="text-sm text-gray-600 mb-4">Backend health endpoint</p>
@@ -68,6 +74,18 @@ export default function AdminPanel() {
                 </div>
                 <div className="mt-4">
                   <button onClick={() => navigate('/users')} className="btn-primary px-4 py-2 text-sm">Manage Users</button>
+                </div>
+              </div>
+
+              <div className="card rounded-lg shadow-md p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-3">Feedback Overview</h2>
+                <p className="text-sm text-gray-600 mb-4">Weighted by recency from user feedback submissions</p>
+                <div className="space-y-2 text-sm text-gray-700">
+                  <p><span className="font-semibold text-gray-900">Responses:</span> {feedbackSummary.response_count || 0}</p>
+                  <p><span className="font-semibold text-gray-900">Weighted Satisfaction:</span> {feedbackSummary.weighted_satisfaction_percent || 0}%</p>
+                </div>
+                <div className="mt-4">
+                  <button onClick={() => navigate('/admin/feedback')} className="btn-secondary px-4 py-2 text-sm">Open Feedback Analytics</button>
                 </div>
               </div>
             </div>

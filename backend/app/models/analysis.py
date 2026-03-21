@@ -2,7 +2,7 @@
 Analysis model for storing skill analysis results.
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, Text, Index, Boolean
+from sqlalchemy import Column, Integer, ForeignKey, JSON, Text, Index
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.core.database import Base
@@ -54,6 +54,7 @@ class Analysis(Base, AuditedBase):
     
     # Relationship to User
     user = relationship("User", back_populates="analyses")
+    feedback_entries = relationship("AnalysisFeedback", back_populates="analysis", cascade="all, delete-orphan")
     
     # Indexes for frequently queried fields
     __table_args__ = (

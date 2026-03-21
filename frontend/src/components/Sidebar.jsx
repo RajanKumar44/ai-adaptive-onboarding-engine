@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, BookOpen, BarChart3, Users, Settings, LogOut, Menu, X } from 'lucide-react'
+import { LayoutDashboard, BookOpen, BarChart3, Users, Settings, LogOut, Menu, X, MessageSquare } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 export default function Sidebar() {
@@ -14,6 +14,7 @@ export default function Sidebar() {
     { path: '/programs', label: 'Programs', icon: BookOpen },
     { path: '/analytics', label: 'Analytics', icon: BarChart3 },
     ...(user?.role === 'admin' ? [{ path: '/users', label: 'Users', icon: Users }] : []),
+    ...(user?.role === 'admin' ? [{ path: '/admin/feedback', label: 'Feedback Insights', icon: MessageSquare }] : []),
     { path: '/settings', label: 'Settings', icon: Settings },
   ]
 

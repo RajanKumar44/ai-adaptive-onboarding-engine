@@ -19,7 +19,7 @@ from app.routes.llm_routes import router as llm_router
 from app.routes.metrics_routes import router as metrics_router
 
 # Import all models so they're registered with SQLAlchemy Base
-from app.models import User, Analysis, AuditLog
+from app.models import User, Analysis, AnalysisFeedback, AuditLog
 
 # Load settings
 settings = get_settings()
@@ -33,7 +33,7 @@ async def lifespan(app: FastAPI):
     """
     try:
         print("🔧 Initializing database tables...")
-        print(f"Models imported: User={User}, Analysis={Analysis}, AuditLog={AuditLog}")
+        print(f"Models imported: User={User}, Analysis={Analysis}, AnalysisFeedback={AnalysisFeedback}, AuditLog={AuditLog}")
         init_db()
         print("✓ Database initialized successfully")
     except Exception as e:

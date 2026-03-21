@@ -8,13 +8,170 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.auth import get_current_admin
 from app.models.user import User, UserRole
+from app.models.analysis import Analysis
+from app.models.feedback import AnalysisFeedback
 from app.schemas.auth_schema import UserResponse, UserDetailResponse
 from app.core.filters import ValidFieldChecker
 from app.core.search import FullTextSearchEngine, SearchMode
 from app.middleware.rate_limiting import RateLimits, limiter
 from typing import List, Optional
+from datetime import datetime
+import math
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
+
+
+def _month_key(value: datetime) -> str:
+    return f"{value.year:04d}-{value.month:02d}"
+
+
+def _month_label(value: datetime) -> str:
+    return value.strftime("%b %Y")
+
+
+def _program_name(raw: str) -> str:
+    text = str(raw or "").strip()
+    if not text:
+        return "General"
+    return " ".join(word.capitalize() for word in text.replace("_", " ").replace("-", " ").split())
+
+
+def _recency_weight(timestamp: datetime, now: datetime) -> float:
+    """Apply exponential decay so recent feedback contributes more."""
+    age_days = max((now - timestamp).total_seconds() / 86400.0, 0.0)
+    half_life_days = 45.0
+    return math.exp(-math.log(2.0) * age_days / half_life_days)
+
+
+@router.get("/feedback-analytics", response_model=dict)
+@limiter.limit(RateLimits.GENERAL)
+async def get_feedback_analytics(
+    request: Request,
+    months: int = Query(6, ge=1, le=24, description="Number of months to include in trend"),
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Get feedback analytics for admins.
+
+    Includes response counts, weighted satisfaction trend, and per-program averages.
+    """
+    now = datetime.utcnow()
+
+    month_buckets = []
+    month_map = {}
+    for offset in range(months - 1, -1, -1):
+        month_start = datetime(now.year, now.month, 1)
+        year = month_start.year
+        month = month_start.month - offset
+        while month <= 0:
+            month += 12
+            year -= 1
+        while month > 12:
+            month -= 12
+            year += 1
+        bucket_date = datetime(year, month, 1)
+        key = _month_key(bucket_date)
+        bucket = {
+            "month": _month_label(bucket_date),
+            "responses": 0,
+            "sum_rating": 0.0,
+            "weighted_sum": 0.0,
+            "weight_sum": 0.0,
+        }
+        month_buckets.append(bucket)
+        month_map[key] = bucket
+
+    rows = db.query(AnalysisFeedback, Analysis).join(
+        Analysis,
+        AnalysisFeedback.analysis_id == Analysis.id,
+    ).all()
+
+    total_responses = 0
+    total_sum_rating = 0.0
+    total_weighted_sum = 0.0
+    total_weight_sum = 0.0
+    program_stats = {}
+
+    for feedback, analysis in rows:
+        event_time = feedback.updated_at or feedback.created_at or analysis.created_at
+        if not event_time:
+            continue
+
+        rating = float(feedback.rating)
+        weight = _recency_weight(event_time, now)
+
+        total_responses += 1
+        total_sum_rating += rating
+        total_weighted_sum += rating * weight
+        total_weight_sum += weight
+
+        key = _month_key(event_time)
+        if key in month_map:
+            bucket = month_map[key]
+            bucket["responses"] += 1
+            bucket["sum_rating"] += rating
+            bucket["weighted_sum"] += rating * weight
+            bucket["weight_sum"] += weight
+
+        skill_list = analysis.missing_skills if isinstance(analysis.missing_skills, list) else []
+        program_names = {_program_name(skill) for skill in skill_list if str(skill).strip()}
+        if not program_names:
+            program_names = {"General"}
+
+        for name in program_names:
+            if name not in program_stats:
+                program_stats[name] = {
+                    "responses": 0,
+                    "sum_rating": 0.0,
+                    "weighted_sum": 0.0,
+                    "weight_sum": 0.0,
+                }
+            program_stats[name]["responses"] += 1
+            program_stats[name]["sum_rating"] += rating
+            program_stats[name]["weighted_sum"] += rating * weight
+            program_stats[name]["weight_sum"] += weight
+
+    trend = []
+    for bucket in month_buckets:
+        avg_rating = (bucket["sum_rating"] / bucket["responses"]) if bucket["responses"] else 0.0
+        weighted_avg = (bucket["weighted_sum"] / bucket["weight_sum"]) if bucket["weight_sum"] else 0.0
+        trend.append({
+            "month": bucket["month"],
+            "responses": bucket["responses"],
+            "average_rating": round(avg_rating, 2),
+            "weighted_average_rating": round(weighted_avg, 2),
+            "weighted_satisfaction_percent": round((weighted_avg / 5.0) * 100.0, 1),
+        })
+
+    per_program_average = []
+    for name, stats in program_stats.items():
+        avg_rating = (stats["sum_rating"] / stats["responses"]) if stats["responses"] else 0.0
+        weighted_avg = (stats["weighted_sum"] / stats["weight_sum"]) if stats["weight_sum"] else 0.0
+        per_program_average.append({
+            "program": name,
+            "responses": stats["responses"],
+            "average_rating": round(avg_rating, 2),
+            "weighted_average_rating": round(weighted_avg, 2),
+            "weighted_satisfaction_percent": round((weighted_avg / 5.0) * 100.0, 1),
+        })
+
+    per_program_average.sort(key=lambda item: (-item["responses"], -item["weighted_average_rating"]))
+
+    average_rating = (total_sum_rating / total_responses) if total_responses else 0.0
+    weighted_average_rating = (total_weighted_sum / total_weight_sum) if total_weight_sum else 0.0
+
+    return {
+        "summary": {
+            "response_count": total_responses,
+            "average_rating": round(average_rating, 2),
+            "weighted_average_rating": round(weighted_average_rating, 2),
+            "weighted_satisfaction_percent": round((weighted_average_rating / 5.0) * 100.0, 1),
+            "half_life_days": 45,
+        },
+        "trend": trend,
+        "per_program_average": per_program_average,
+    }
 
 
 @router.get("/users", response_model=dict)

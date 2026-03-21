@@ -34,6 +34,15 @@ function round(value, digits = 1) {
   return Math.round((value + Number.EPSILON) * factor) / factor
 }
 
+function getRecencyWeight(timestamp) {
+  const parsed = toDate(timestamp)
+  if (!parsed) return 1
+  const now = Date.now()
+  const ageDays = Math.max((now - parsed.getTime()) / (1000 * 60 * 60 * 24), 0)
+  const halfLifeDays = 45
+  return 2 ** (-ageDays / halfLifeDays)
+}
+
 function normalizeSkillName(skill) {
   const raw = String(skill || '').trim()
   if (!raw) return null
@@ -165,6 +174,27 @@ export async function fetchReportingSnapshot(currentUser) {
     : 0
   const avgMissingSkills = analysesWithMatch.length
     ? analysesWithMatch.reduce((sum, analysis) => sum + Number(analysis.missing_skills_count || 0), 0) / analysesWithMatch.length
+    : 0
+  const feedbackEntries = analysesWithMatch
+    .map((analysis) => {
+      const rating = Number(analysis.feedback_rating)
+      if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+        return null
+      }
+      const feedbackTimestamp = analysis.feedback_updated_at || analysis.feedback_created_at || analysis.created_at
+      return {
+        rating,
+        weight: getRecencyWeight(feedbackTimestamp),
+      }
+    })
+    .filter(Boolean)
+  const feedbackRatings = feedbackEntries.map((entry) => entry.rating)
+  const avgFeedback = feedbackRatings.length
+    ? feedbackRatings.reduce((sum, rating) => sum + rating, 0) / feedbackRatings.length
+    : 0
+  const totalWeight = feedbackEntries.reduce((sum, entry) => sum + entry.weight, 0)
+  const weightedFeedback = totalWeight
+    ? feedbackEntries.reduce((sum, entry) => sum + (entry.rating * entry.weight), 0) / totalWeight
     : 0
   const avgTimeHours = round(avgMissingSkills * 6, 1)
   const completionRate = totalUsers > 0 ? round((completedUsers / totalUsers) * 100, 1) : 0
@@ -325,7 +355,10 @@ export async function fetchReportingSnapshot(currentUser) {
       completions: completedUsers,
       avgMatchPercentage: round(avgMatch, 1),
       avgTimeHours,
-      satisfactionScore: round(avgMatch, 0),
+      satisfactionScore: round((weightedFeedback / 5) * 100, 0),
+      satisfactionAverage: round(avgFeedback, 2),
+      weightedSatisfactionAverage: round(weightedFeedback, 2),
+      satisfactionResponses: feedbackRatings.length,
       completionRate,
     },
     monthlyTrend: monthBuckets,
