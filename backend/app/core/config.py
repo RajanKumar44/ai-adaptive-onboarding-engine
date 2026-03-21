@@ -46,6 +46,16 @@ class Settings(BaseSettings):
     # ================= API =================
     API_PREFIX: str = "/api/v1"
 
+    # ================= CORS =================
+    CORS_ORIGINS: str = (
+        "http://localhost:3000,"
+        "http://127.0.0.1:3000,"
+        "http://localhost:5173,"
+        "http://127.0.0.1:5173,"
+        "http://localhost:5175,"
+        "http://127.0.0.1:5175"
+    )
+
     # ================= AUTHENTICATION =================
     JWT_SECRET_KEY: str = "your-secret-key-change-in-production"
     JWT_ALGORITHM: str = "HS256"

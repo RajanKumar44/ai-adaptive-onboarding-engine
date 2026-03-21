@@ -53,7 +53,6 @@ class User(Base, AuditedBase):
     __table_args__ = (
         Index('ix_users_email_not_deleted', 'email', 'deleted_at'),
         Index('ix_users_active_deleted', 'is_active', 'deleted_at'),
-        Index('ix_users_created_at', 'created_at'),
         Index('ix_users_role', 'role'),
     )
     

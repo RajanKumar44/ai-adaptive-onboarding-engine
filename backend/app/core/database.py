@@ -114,8 +114,6 @@ def init_db() -> None:
    Initialize database (create tables).
     Should be called once at application startup.
     """
-    from sqlalchemy.schema import CreateTable
-    
     try:
         # Import models here to ensure they're registered before creating tables
         from app.models.user import User  # noqa: F401
@@ -129,32 +127,12 @@ def init_db() -> None:
         if not tables_to_create:
             logger.warning("⚠ No tables found in Base.metadata.tables!")
             return
-        
-        # Create tables by executing raw SQL
-        # This avoids SQLAlchemy transaction management complexity
-        conn = engine.connect()
-        try:
-            for table in Base.metadata.sorted_tables:
-                logger.debug(f"Creating table: {table.name}")
-                # Generate CREATE TABLE DDL from table metadata
-                create_table_sql = str(CreateTable(table).compile(bind=engine))
-                logger.debug(f"SQL: {create_table_sql}")
-                
-                # Execute without transaction - just raw SQL
-                try:
-                    conn.exec_driver_sql(create_table_sql)
-                except Exception as table_err:
-                    error_str = str(table_err).lower()
-                    if "already exists" not in error_str and "duplicate" not in error_str:
-                        logger.warning(f"Error creating table {table.name}: {table_err}")
-                        # Continue to next table even if one fails
-            
-            # Commit all changes
-            conn.commit()
-            logger.info(f"✓ Database initialization complete - {len(tables_to_create)} tables created successfully")
-            
-        finally:
-            conn.close()
+
+        # Let SQLAlchemy create enum types and tables in the proper order.
+        Base.metadata.create_all(bind=engine, checkfirst=True)
+        logger.info(
+            f"✓ Database initialization complete - {len(tables_to_create)} tables ensured"
+        )
             
     except Exception as e:
         logger.error(f"✗ Error during database initialization: {type(e).__name__}: {str(e)}")

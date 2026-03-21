@@ -68,3 +68,13 @@ docker-compose.override.yml
 *.sqlite3
 backups/
 uploads/
+
+# Non-runtime project files
+tests/
+examples/
+docs/
+*.md
+test_*.py
+run_tests.py
+pytest.ini
+requirements-dev.txt

@@ -3,38 +3,41 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package.json package-lock.json ./
+# Build-time variables (used by Vite)
+ARG VITE_API_URL=http://localhost:8000/api/v1
+ARG VITE_APP_NAME="AI Adaptive Onboarding Engine"
+
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_APP_NAME=$VITE_APP_NAME
 
 # Install dependencies
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
 
-# Copy source code
+# Copy source
 COPY . .
 
-# Build for production
+# Build app
 RUN npm run build
 
 # Production stage
-FROM node:20-alpine
+FROM nginx:1.27-alpine
 
-WORKDIR /app
+# Install curl for healthcheck
+RUN apk add --no-cache curl
 
-# Install serve to run the built app
-RUN npm install -g serve
+# Copy build output
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy built files from builder
-COPY --from=builder /app/dist ./dist
+# Copy nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Expose port
+# Expose correct port
 EXPOSE 3000
-
-# Environment variables
-ENV NODE_ENV=production
 
 # Health check
 HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
-  CMD node -e "require('http').request('http://localhost:3000', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})" || exit 1
+  CMD curl -fsS http://localhost:3000/ || exit 1
 
-# Start the application
-CMD ["serve", "-s", "dist", "-l", "3000"]
+# Run nginx
+CMD ["nginx", "-g", "daemon off;"]

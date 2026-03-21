@@ -58,6 +58,5 @@ class Analysis(Base, AuditedBase):
     # Indexes for frequently queried fields
     __table_args__ = (
         Index('ix_analyses_user_id_not_deleted', 'user_id', 'deleted_at'),
-        Index('ix_analyses_created_at', 'created_at'),
         Index('ix_analyses_user_created', 'user_id', 'created_at'),
     )

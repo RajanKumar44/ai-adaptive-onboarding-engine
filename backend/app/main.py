@@ -61,11 +61,17 @@ app = FastAPI(
 
 # ================= MIDDLEWARE =================
 
-# CORS (restrict in production)
+# CORS (explicit origins for local frontend + configurable via env)
+cors_origins = [
+    origin.strip()
+    for origin in settings.CORS_ORIGINS.split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # ⚠️ change in production
-    allow_credentials=False,
+    allow_origins=cors_origins,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )

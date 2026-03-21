@@ -1,12 +1,9 @@
-version: '3.8'
-
 # Docker Compose for AI Adaptive Onboarding Engine
 # PHASE 2: Database & Persistence with Docker
 # 
 # Services:
 # - db: PostgreSQL database with persistence
 # - app: FastAPI backend application
-# - adminer: Database admin UI (optional, for development)
 #
 # Usage:
 #   docker-compose up -d          Start services
@@ -78,6 +75,9 @@ services:
       APP_ENV: ${APP_ENV:-development}
       APP_NAME: "AI Adaptive Onboarding Engine"
       DEBUG: ${DEBUG:-true}
+
+      # Force backend to use Postgres in Docker
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-ai_onboarding}
       
       # Database settings
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -164,6 +164,9 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000/api/v1}
+        VITE_APP_NAME: ${VITE_APP_NAME:-AI Adaptive Onboarding Engine}
     
     container_name: ai-onboarding-frontend
     
@@ -194,33 +197,6 @@ services:
         max-size: "10m"
         max-file: "3"
   
-  # Optional: Adminer for database management UI
-  # Access at http://localhost:8080
-  adminer:
-    image: adminer:latest
-    container_name: ai-onboarding-adminer
-    
-    ports:
-      - "8080:8080"
-    
-    depends_on:
-      - db
-    
-    networks:
-      - app-network
-    
-    restart: unless-stopped
-    
-    # Only start in development
-    profiles:
-      - dev
-    
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "5m"
-        max-file: "2"
-
 # Volumes for data persistence
 volumes:
   postgres_data:
