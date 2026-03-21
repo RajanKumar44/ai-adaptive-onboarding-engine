@@ -4,11 +4,14 @@ import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import { adminAPI } from '../api/client'
+import { useAuth } from '../context/AuthContext'
 
 export default function Users() {
+  const { user: currentUser } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [filterRole, setFilterRole] = useState('all')
   const [users, setUsers] = useState([])
+  const [adminMode, setAdminMode] = useState(true)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState({})
   const [error, setError] = useState('')
@@ -26,8 +29,25 @@ export default function Users() {
         }
         const response = await adminAPI.listUsers(params)
         setUsers(response.data?.data || [])
+        setAdminMode(true)
       } catch (err) {
-        setError(err?.response?.data?.detail || 'Failed to load users. Admin access may be required.')
+        if (err?.response?.status === 403 && currentUser?.id) {
+          setUsers([
+            {
+              id: currentUser.id,
+              name: currentUser.name,
+              email: currentUser.email,
+              role: currentUser.role,
+              is_active: currentUser.is_active,
+              created_at: currentUser.created_at,
+              analyses_count: 0,
+            },
+          ])
+          setAdminMode(false)
+          setError('Admin access is required for organization-wide user management. Showing your account only.')
+        } else {
+          setError(err?.response?.data?.detail || 'Failed to load users. Admin access may be required.')
+        }
       } finally {
         setLoading(false)
       }
@@ -35,7 +55,7 @@ export default function Users() {
 
     const timeout = setTimeout(fetchUsers, 300)
     return () => clearTimeout(timeout)
-  }, [searchQuery, filterRole])
+  }, [searchQuery, filterRole, currentUser])
 
   const filteredUsers = users
 
@@ -164,7 +184,7 @@ export default function Users() {
                 <Download size={20} />
                 <span>Export</span>
               </button>
-              <button onClick={() => navigate('/register')} className="btn-primary px-6 py-2 inline-flex items-center space-x-2 whitespace-nowrap">
+              <button onClick={() => navigate('/register')} className="btn-primary px-6 py-2 inline-flex items-center space-x-2 whitespace-nowrap" disabled={!adminMode}>
                 <Plus size={20} />
                 <span>Add User</span>
               </button>
@@ -242,7 +262,7 @@ export default function Users() {
                               onClick={() => handleRoleToggle(user)}
                               className="p-2 text-gray-600 hover:bg-gray-100 rounded transition"
                               title="Toggle Admin/User"
-                              disabled={actionLoading[user.id]}
+                              disabled={actionLoading[user.id] || !adminMode}
                             >
                               <Edit2 size={18} />
                             </button>
@@ -250,7 +270,7 @@ export default function Users() {
                               onClick={() => (user.role === 'admin' ? handleStatusToggle(user) : handleDelete(user))}
                               className="p-2 text-gray-600 hover:bg-red-100 hover:text-red-600 rounded transition"
                               title={user.role === 'admin' ? (user.is_active ? 'Deactivate' : 'Activate') : 'Delete'}
-                              disabled={actionLoading[user.id]}
+                              disabled={actionLoading[user.id] || !adminMode}
                             >
                               <Trash2 size={18} />
                             </button>

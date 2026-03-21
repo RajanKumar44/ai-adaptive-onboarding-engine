@@ -33,6 +33,24 @@ function ProtectedRoute({ children }) {
   return children
 }
 
+function AdminRoute({ children }) {
+  const { isAuthenticated, loading, user } = useAuth()
+
+  if (loading) {
+    return <LoadingSpinner />
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+
+  if (user?.role !== 'admin') {
+    return <Navigate to="/" replace />
+  }
+
+  return children
+}
+
 function AppContent() {
   const { isAuthenticated, loading } = useAuth()
 
@@ -117,9 +135,9 @@ function AppContent() {
           <Route
             path="/admin"
             element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <AdminPanel />
-              </ProtectedRoute>
+              </AdminRoute>
             }
           />
 

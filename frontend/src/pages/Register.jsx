@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Mail, Lock, AlertCircle, CheckCircle } from 'lucide-react'
+import { Mail, Lock, AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 export default function Register() {
@@ -14,8 +14,18 @@ export default function Register() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [passwordStrength, setPasswordStrength] = useState(0)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const { register } = useAuth()
   const navigate = useNavigate()
+
+  const passwordChecks = {
+    minLength: formData.password.length >= 8,
+    hasUpper: /[A-Z]/.test(formData.password),
+    hasLower: /[a-z]/.test(formData.password),
+    hasNumber: /\d/.test(formData.password),
+    hasSpecial: /[!@#$%^&*]/.test(formData.password),
+  }
 
   const calculatePasswordStrength = (password) => {
     let strength = 0
@@ -55,8 +65,19 @@ export default function Register() {
       })
       navigate('/')
     } catch (err) {
-      const message = err?.detail || err?.message || 'Registration failed'
-      setError(Array.isArray(message) ? message.join(', ') : message)
+      const detail = err?.detail
+      if (Array.isArray(detail)) {
+        const readable = detail
+          .map((item) => item?.msg || item?.message || 'Validation error')
+          .join(', ')
+        setError(readable)
+      } else if (typeof detail === 'string' && detail) {
+        setError(detail)
+      } else if (detail && typeof detail === 'object') {
+        setError(detail.message || 'Registration failed')
+      } else {
+        setError(err?.message || 'Registration failed')
+      }
     } finally {
       setLoading(false)
     }
@@ -144,14 +165,23 @@ export default function Register() {
             <div className="relative">
               <Lock className="absolute left-3 top-3 text-gray-400" size={20} />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 name="password"
                 value={formData.password}
                 onChange={handleInputChange}
-                className="input pl-10"
+                className="input pl-10 pr-10"
                 placeholder="••••••••"
+                minLength={8}
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
             </div>
             {formData.password && (
               <div className="mt-2">
@@ -172,6 +202,23 @@ export default function Register() {
                     style={{ width: `${(passwordStrength / 4) * 100}%` }}
                   />
                 </div>
+                <div className="mt-3 grid grid-cols-1 gap-1 text-xs">
+                  <p className={passwordChecks.minLength ? 'text-green-600' : 'text-red-600'}>
+                    {passwordChecks.minLength ? 'OK' : 'Required'}: at least 8 characters
+                  </p>
+                  <p className={passwordChecks.hasUpper ? 'text-green-600' : 'text-red-600'}>
+                    {passwordChecks.hasUpper ? 'OK' : 'Required'}: one uppercase letter
+                  </p>
+                  <p className={passwordChecks.hasLower ? 'text-green-600' : 'text-red-600'}>
+                    {passwordChecks.hasLower ? 'OK' : 'Required'}: one lowercase letter
+                  </p>
+                  <p className={passwordChecks.hasNumber ? 'text-green-600' : 'text-red-600'}>
+                    {passwordChecks.hasNumber ? 'OK' : 'Required'}: one number
+                  </p>
+                  <p className={passwordChecks.hasSpecial ? 'text-green-600' : 'text-red-600'}>
+                    {passwordChecks.hasSpecial ? 'OK' : 'Required'}: one special character (!@#$%^&*)
+                  </p>
+                </div>
               </div>
             )}
           </div>
@@ -182,14 +229,23 @@ export default function Register() {
             <div className="relative">
               <Lock className="absolute left-3 top-3 text-gray-400" size={20} />
               <input
-                type="password"
+                type={showConfirmPassword ? 'text' : 'password'}
                 name="confirm_password"
                 value={formData.confirm_password}
                 onChange={handleInputChange}
-                className="input pl-10"
+                className="input pl-10 pr-10"
                 placeholder="••••••••"
+                minLength={8}
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword((prev) => !prev)}
+                className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+              >
+                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
             </div>
             {formData.confirm_password && formData.password === formData.confirm_password && (
               <div className="flex items-center space-x-2 mt-2 text-green-600">

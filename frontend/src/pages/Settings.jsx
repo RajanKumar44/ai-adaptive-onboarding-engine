@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Save, Eye, EyeOff, Bell, Lock, User, Building, Globe } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
@@ -18,11 +18,11 @@ export default function Settings() {
   })
   const [settings, setSettings] = useState({
     account: {
-      firstName: 'John',
-      lastName: 'Doe',
-      email: 'john@example.com',
-      phone: '+1 (555) 123-4567',
-      bio: 'Passionate about learning and development',
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      bio: '',
     },
     organization: {
       companyName: 'Tech Corp',
@@ -50,6 +50,22 @@ export default function Settings() {
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'security', label: 'Security', icon: Lock },
   ]
+
+  useEffect(() => {
+    const fullName = (user?.name || '').trim()
+    const [firstName, ...rest] = fullName.split(/\s+/).filter(Boolean)
+    const lastName = rest.join(' ')
+
+    setSettings((prev) => ({
+      ...prev,
+      account: {
+        ...prev.account,
+        firstName: firstName || prev.account.firstName,
+        lastName: lastName || prev.account.lastName,
+        email: user?.email || prev.account.email,
+      },
+    }))
+  }, [user])
 
   const handleInputChange = (section, field, value) => {
     setSettings(prev => ({

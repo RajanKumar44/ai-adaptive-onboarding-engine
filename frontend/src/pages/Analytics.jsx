@@ -1,68 +1,61 @@
 import React, { useState, useEffect } from 'react'
-import { BarChart, Bar, LineChart, Line, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { Download, Calendar, Filter } from 'lucide-react'
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { Download, Filter } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import StatCard from '../components/StatCard'
-import { metricsAPI } from '../api/client'
+import { useAuth } from '../context/AuthContext'
+import { fetchReportingSnapshot } from '../utils/reporting'
 
 export default function Analytics() {
+  const { user } = useAuth()
   const [dateRange, setDateRange] = useState('30days')
-  const [metricsStatus, setMetricsStatus] = useState('')
+  const [metricsStatus, setMetricsStatus] = useState('healthy')
   const [error, setError] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [summary, setSummary] = useState(null)
-
-  const engagementData = [
-    { day: 'Mon', engagement: 65, sessions: 120 },
-    { day: 'Tue', engagement: 72, sessions: 145 },
-    { day: 'Wed', engagement: 78, sessions: 165 },
-    { day: 'Thu', engagement: 68, sessions: 135 },
-    { day: 'Fri', engagement: 82, sessions: 180 },
-    { day: 'Sat', engagement: 55, sessions: 95 },
-    { day: 'Sun', engagement: 48, sessions: 75 },
-  ]
-
-  const performanceData = [
-    { program: 'Python', score: 85, target: 80 },
-    { program: 'React', score: 78, target: 80 },
-    { program: 'SQL', score: 92, target: 80 },
-    { program: 'Cloud', score: 68, target: 80 },
-    { program: 'ML', score: 75, target: 80 },
-    { program: 'DevOps', score: 88, target: 80 },
-  ]
-
-  const progressData = [
-    { name: 'Sarah', started: 45, completed: 92 },
-    { name: 'Mike', started: 38, completed: 75 },
-    { name: 'Emily', started: 52, completed: 88 },
-    { name: 'James', started: 41, completed: 79 },
-    { name: 'Lisa', started: 48, completed: 85 },
-    { name: 'David', started: 35, completed: 68 },
-  ]
+  const [loading, setLoading] = useState(true)
+  const [scopeLabel, setScopeLabel] = useState('your')
+  const [engagementData, setEngagementData] = useState([])
+  const [performanceData, setPerformanceData] = useState([])
+  const [progressData, setProgressData] = useState([])
+  const [topPerformers, setTopPerformers] = useState([])
+  const [completionStatus, setCompletionStatus] = useState([
+    { label: 'Completed', value: 0, color: 'bg-green-500' },
+    { label: 'In Progress', value: 0, color: 'bg-yellow-500' },
+    { label: 'Not Started', value: 100, color: 'bg-gray-400' },
+  ])
 
   useEffect(() => {
     const loadMetrics = async () => {
+      if (!user?.id) return
+      setLoading(true)
       setError('')
       try {
-        const [health, status] = await Promise.all([
-          metricsAPI.getHealth(),
-          metricsAPI.getPerformance().catch(() => null),
-        ])
-        setMetricsStatus(health?.data?.status || 'unknown')
-        setSummary(status?.data || null)
+        const snapshot = await fetchReportingSnapshot(user)
+        setMetricsStatus('healthy')
+        setScopeLabel(snapshot.scopeLabel)
+        setSummary(snapshot.stats)
+        setEngagementData(snapshot.engagementData)
+        setPerformanceData(snapshot.performanceData)
+        setProgressData(snapshot.progressData)
+        setTopPerformers(snapshot.topPerformers)
+        setCompletionStatus(snapshot.completionStatus)
       } catch (err) {
         setError(err?.response?.data?.detail || 'Unable to fetch analytics metrics')
+      } finally {
+        setLoading(false)
       }
     }
 
     loadMetrics()
-  }, [dateRange])
+  }, [dateRange, user])
 
   const exportReport = () => {
     const report = {
       generatedAt: new Date().toISOString(),
       dateRange,
+      scopeLabel,
       healthStatus: metricsStatus || 'unknown',
       engagementData,
       performanceData,
@@ -92,7 +85,7 @@ export default function Analytics() {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
                 <div>
                   <h1 className="text-3xl font-bold text-gray-900">Analytics</h1>
-                  <p className="text-gray-600 mt-2">Comprehensive insights into your onboarding programs</p>
+                  <p className="text-gray-600 mt-2">Comprehensive insights from {scopeLabel} real onboarding data</p>
                 </div>
                 <button onClick={exportReport} className="mt-4 sm:mt-0 btn-secondary px-6 py-2 inline-flex items-center space-x-2">
                   <Download size={20} />
@@ -104,6 +97,12 @@ export default function Analytics() {
                 <p className="text-sm text-gray-600 mb-4">
                   Backend metrics status: <span className="font-semibold capitalize">{metricsStatus}</span>
                 </p>
+              )}
+
+              {loading && (
+                <div className="mb-4 bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg text-sm">
+                  Loading latest analytics from the database...
+                </div>
               )}
 
               {error && (
@@ -141,28 +140,28 @@ export default function Analytics() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <StatCard
                 title="Total Users"
-                value={1250}
+                value={summary?.totalUsers ?? 0}
                 icon={<span className="text-2xl">👥</span>}
                 change={12}
                 trend="up"
               />
               <StatCard
                 title="Avg. Score"
-                value={81}
+                value={summary?.avgMatchPercentage ?? 0}
                 icon={<span className="text-2xl">⭐</span>}
                 change={5}
                 trend="up"
               />
               <StatCard
                 title="Completion Rate"
-                value="78%"
+                value={`${summary?.completionRate ?? 0}%`}
                 icon={<span className="text-2xl">✅</span>}
                 change={8}
                 trend="up"
               />
               <StatCard
                 title="Avg. Time/Course"
-                value="4.2h"
+                value={`${summary?.avgTimeHours ?? 0}h`}
                 icon={<span className="text-2xl">⏱️</span>}
                 change={-3}
                 trend="down"
@@ -225,13 +224,12 @@ export default function Analytics() {
               <div className="card rounded-lg shadow-md p-6">
                 <h2 className="text-xl font-bold text-gray-900 mb-4">Top Performers</h2>
                 <div className="space-y-4">
-                  {[
-                    { rank: 1, name: 'Sarah Johnson', score: 95, completed: 12 },
-                    { rank: 2, name: 'Mike Chen', score: 92, completed: 10 },
-                    { rank: 3, name: 'Emily Davis', score: 88, completed: 9 },
-                    { rank: 4, name: 'James Wilson', score: 85, completed: 8 },
-                    { rank: 5, name: 'Lisa Brown', score: 82, completed: 8 },
-                  ].map((user) => (
+                  {topPerformers.length === 0 && (
+                    <div className="p-3 border border-gray-200 rounded-lg text-sm text-gray-600">
+                      No performer data available yet.
+                    </div>
+                  )}
+                  {topPerformers.map((user) => (
                     <div key={user.rank} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
                       <div className="flex items-center space-x-4">
                         <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-600">
@@ -255,11 +253,7 @@ export default function Analytics() {
               <div className="card rounded-lg shadow-md p-6">
                 <h2 className="text-xl font-bold text-gray-900 mb-4">Completion Status</h2>
                 <div className="space-y-4">
-                  {[
-                    { label: 'Completed', value: 78, color: 'bg-green-500' },
-                    { label: 'In Progress', value: 18, color: 'bg-yellow-500' },
-                    { label: 'Not Started', value: 4, color: 'bg-gray-400' },
-                  ].map((status, index) => (
+                  {completionStatus.map((status, index) => (
                     <div key={index}>
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-medium text-gray-700">{status.label}</span>

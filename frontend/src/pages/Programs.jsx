@@ -1,82 +1,81 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Plus, Search, Filter, BookOpen, Users, Clock, TrendingUp } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
+import { useAuth } from '../context/AuthContext'
+import { fetchReportingSnapshot } from '../utils/reporting'
 
 export default function Programs() {
+  const { user } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
+  const [programs, setPrograms] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const navigate = useNavigate()
 
-  const [programs] = useState([
-    {
-      id: 1,
-      name: 'Python Basics',
-      description: 'Learn Python fundamentals for beginners',
-      icon: '🐍',
-      status: 'active',
-      enrolledUsers: 245,
-      completionRate: 78,
-      duration: '4 weeks',
-      modules: 8,
-    },
-    {
-      id: 2,
-      name: 'React Development',
-      description: 'Master React and modern JavaScript frameworks',
-      icon: '⚛️',
-      status: 'active',
-      enrolledUsers: 189,
-      completionRate: 65,
-      duration: '6 weeks',
-      modules: 12,
-    },
-    {
-      id: 3,
-      name: 'Database Design',
-      description: 'SQL and database architecture fundamentals',
-      icon: '🗄️',
-      status: 'active',
-      enrolledUsers: 156,
-      completionRate: 82,
-      duration: '3 weeks',
-      modules: 6,
-    },
-    {
-      id: 4,
-      name: 'Cloud Computing',
-      description: 'AWS and cloud infrastructure essentials',
-      icon: '☁️',
-      status: 'draft',
-      enrolledUsers: 0,
-      completionRate: 0,
-      duration: '5 weeks',
-      modules: 10,
-    },
-    {
-      id: 5,
-      name: 'Machine Learning',
-      description: 'Introduction to ML and AI concepts',
-      icon: '🤖',
-      status: 'active',
-      enrolledUsers: 98,
-      completionRate: 45,
-      duration: '8 weeks',
-      modules: 15,
-    },
-    {
-      id: 6,
-      name: 'DevOps Essentials',
-      description: 'CI/CD pipelines and deployment strategies',
-      icon: '🔧',
-      status: 'archived',
-      enrolledUsers: 67,
-      completionRate: 100,
-      duration: '4 weeks',
-      modules: 7,
-    },
-  ])
+  useEffect(() => {
+    const loadPrograms = async () => {
+      if (!user?.id) return
+      setLoading(true)
+      setError('')
+      try {
+        const snapshot = await fetchReportingSnapshot(user)
+        const iconPool = ['🐍', '⚛️', '🗄️', '☁️', '🤖', '🔧', '📊', '🧪', '🧠', '⚙️']
+        const usersByProgram = {}
+        const statsByProgram = {}
+
+        snapshot.allAnalyses.forEach((analysis) => {
+          const userId = analysis.user_id
+          const skills = Array.isArray(analysis.missing_skills) ? analysis.missing_skills : []
+          skills.forEach((skill) => {
+            const key = String(skill || '').trim()
+            if (!key) return
+            if (!usersByProgram[key]) usersByProgram[key] = new Set()
+            if (!statsByProgram[key]) {
+              statsByProgram[key] = { gapSum: 0, occurrences: 0 }
+            }
+            usersByProgram[key].add(userId)
+            statsByProgram[key].gapSum += Number(analysis.missing_skills_count || 0)
+            statsByProgram[key].occurrences += 1
+          })
+        })
+
+        const generatedPrograms = Object.entries(statsByProgram)
+          .sort((a, b) => b[1].occurrences - a[1].occurrences)
+          .slice(0, 24)
+          .map(([name, values], index) => {
+            const enrolledUsers = usersByProgram[name]?.size || 0
+            const avgGap = values.occurrences ? values.gapSum / values.occurrences : 0
+            const completionRate = Math.max(0, Math.min(100, Math.round(100 - avgGap * 8)))
+            const durationWeeks = Math.max(1, Math.round(avgGap / 2))
+            const modules = Math.max(3, Math.round(avgGap) + 2)
+            const status = enrolledUsers > 0 ? 'active' : 'draft'
+
+            return {
+              id: `${name}-${index}`,
+              name,
+              description: `Skill-development program generated from real analysis gaps for ${name}.`,
+              icon: iconPool[index % iconPool.length],
+              status,
+              enrolledUsers,
+              completionRate,
+              duration: `${durationWeeks} weeks`,
+              modules,
+            }
+          })
+
+        setPrograms(generatedPrograms)
+      } catch (err) {
+        setError(err?.response?.data?.detail || 'Unable to load programs from the database')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadPrograms()
+  }, [user])
 
   const filteredPrograms = programs.filter(program => {
     const matchesSearch = program.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -114,8 +113,20 @@ export default function Programs() {
             {/* Header */}
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-gray-900">Onboarding Programs</h1>
-              <p className="text-gray-600 mt-2">Create and manage onboarding programs for your organization</p>
+              <p className="text-gray-600 mt-2">Programs generated from real skill-gap data in your database</p>
             </div>
+
+            {error && (
+              <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
+
+            {loading && (
+              <div className="mb-6 bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg text-sm">
+                Loading programs...
+              </div>
+            )}
 
             {/* Controls */}
             <div className="flex flex-col sm:flex-row gap-4 mb-8">

@@ -6,14 +6,14 @@ import { useAuth } from '../context/AuthContext'
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(true)
   const location = useLocation()
-  const { logout } = useAuth()
+  const { logout, user } = useAuth()
   const navigate = useNavigate()
 
   const menuItems = [
     { path: '/', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/programs', label: 'Programs', icon: BookOpen },
     { path: '/analytics', label: 'Analytics', icon: BarChart3 },
-    { path: '/users', label: 'Users', icon: Users },
+    ...(user?.role === 'admin' ? [{ path: '/users', label: 'Users', icon: Users }] : []),
     { path: '/settings', label: 'Settings', icon: Settings },
   ]
 
