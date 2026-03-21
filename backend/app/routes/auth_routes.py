@@ -2,7 +2,7 @@
 Authentication routes for login, registration, and token management.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from app.core.database import get_db
@@ -30,14 +30,15 @@ router = APIRouter(prefix="/api/v1/auth", tags=["authentication"])
 @router.post("/register", response_model=TokenResponse, status_code=201)
 @limiter.limit(RateLimits.REGISTER)
 async def register(
-    request: RegisterRequest,
+    request: Request,
+    registration_data: RegisterRequest,
     db: Session = Depends(get_db)
 ):
     """
     Register a new user account.
     
     Args:
-        request: Registration data (email, name, password)
+        registration_data: Registration data (email, name, password)
         db: Database session
         
     Returns:
@@ -47,14 +48,14 @@ async def register(
         HTTPException: If email already exists or validation fails
     """
     # Validate passwords match
-    if not request.validate_passwords_match():
+    if not registration_data.validate_passwords_match():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Passwords do not match"
         )
     
     # Validate password strength
-    is_valid, msg = SecurityManager.validate_password_strength(request.password)
+    is_valid, msg = SecurityManager.validate_password_strength(registration_data.password)
     if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -62,7 +63,7 @@ async def register(
         )
     
     # Check if user already exists
-    existing_user = db.query(User).filter(User.email == request.email).first()
+    existing_user = db.query(User).filter(User.email == registration_data.email).first()
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -70,10 +71,10 @@ async def register(
         )
     
     # Create new user
-    hashed_password = SecurityManager.hash_password(request.password)
+    hashed_password = SecurityManager.hash_password(registration_data.password)
     new_user = User(
-        email=request.email,
-        name=request.name,
+        email=registration_data.email,
+        name=registration_data.name,
         password_hash=hashed_password
     )
     
@@ -99,14 +100,15 @@ async def register(
 @router.post("/login", response_model=TokenResponse)
 @limiter.limit(RateLimits.LOGIN)
 async def login(
-    request: LoginRequest,
+    request: Request,
+    credentials: LoginRequest,
     db: Session = Depends(get_db)
 ):
     """
     Login with email and password.
     
     Args:
-        request: Login credentials
+        credentials: Login credentials
         db: Database session
         
     Returns:
@@ -116,7 +118,7 @@ async def login(
         HTTPException: If credentials invalid
     """
     # Find user by email
-    user = db.query(User).filter(User.email == request.email).first()
+    user = db.query(User).filter(User.email == credentials.email).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -124,7 +126,7 @@ async def login(
         )
     
     # Verify password
-    if not SecurityManager.verify_password(request.password, user.password_hash):
+    if not SecurityManager.verify_password(credentials.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
@@ -155,14 +157,15 @@ async def login(
 @router.post("/refresh", response_model=TokenResponse)
 @limiter.limit(RateLimits.REFRESH_TOKEN)
 async def refresh_token(
-    request: RefreshTokenRequest,
+    request: Request,
+    token_request: RefreshTokenRequest,
     db: Session = Depends(get_db)
 ):
     """
     Refresh an access token using a refresh token.
     
     Args:
-        request: Refresh token
+        token_request: Refresh token
         db: Database session
         
     Returns:
@@ -172,7 +175,7 @@ async def refresh_token(
         HTTPException: If refresh token is invalid
     """
     # Verify refresh token
-    payload = SecurityManager.verify_token(request.refresh_token, token_type="refresh")
+    payload = SecurityManager.verify_token(token_request.refresh_token, token_type="refresh")
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -224,7 +227,8 @@ async def logout(current_user: User = Depends(get_current_user)):
 @router.post("/change-password", status_code=200)
 @limiter.limit(RateLimits.GENERAL)
 async def change_password(
-    request: ChangePasswordRequest,
+    request: Request,
+    password_data: ChangePasswordRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -232,7 +236,7 @@ async def change_password(
     Change user's password.
     
     Args:
-        request: Old and new password
+        password_data: Old and new password
         current_user: Current authenticated user
         db: Database session
         
@@ -243,21 +247,21 @@ async def change_password(
         HTTPException: If old password wrong or validation fails
     """
     # Verify old password
-    if not SecurityManager.verify_password(request.old_password, current_user.password_hash):
+    if not SecurityManager.verify_password(password_data.old_password, current_user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid old password"
         )
     
     # Passwords must match
-    if request.new_password != request.confirm_password:
+    if password_data.new_password != password_data.confirm_password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="New passwords do not match"
         )
     
     # Validate new password strength
-    is_valid, msg = SecurityManager.validate_password_strength(request.new_password)
+    is_valid, msg = SecurityManager.validate_password_strength(password_data.new_password)
     if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -265,7 +269,7 @@ async def change_password(
         )
     
     # Update password
-    current_user.password_hash = SecurityManager.hash_password(request.new_password)
+    current_user.password_hash = SecurityManager.hash_password(password_data.new_password)
     db.commit()
     
     return {
@@ -299,7 +303,8 @@ async def get_current_user_profile(current_user: User = Depends(get_current_user
 @router.put("/me", response_model=UserResponse)
 @limiter.limit(RateLimits.GENERAL)
 async def update_profile(
-    request: UpdateProfileRequest,
+    request: Request,
+    profile_data: UpdateProfileRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -307,7 +312,7 @@ async def update_profile(
     Update current user's profile.
     
     Args:
-        request: Updated profile data
+        profile_data: Updated profile data
         current_user: Current authenticated user
         db: Database session
         
@@ -318,18 +323,18 @@ async def update_profile(
         HTTPException: If email already registered
     """
     # Check if new email is already taken (if changing email)
-    if request.email and request.email != current_user.email:
-        existing = db.query(User).filter(User.email == request.email).first()
+    if profile_data.email and profile_data.email != current_user.email:
+        existing = db.query(User).filter(User.email == profile_data.email).first()
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email already registered"
             )
-        current_user.email = request.email
+        current_user.email = profile_data.email
     
     # Update name
-    if request.name:
-        current_user.name = request.name
+    if profile_data.name:
+        current_user.name = profile_data.name
     
     # Update timestamp
     current_user.updated_at = datetime.utcnow()

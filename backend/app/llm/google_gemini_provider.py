@@ -5,7 +5,7 @@ Supports Gemini 1.5 Pro, Gemini 1.5 Flash, and Gemini Pro models.
 
 import json
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import google.generativeai as genai
 from google.api_core.exceptions import GoogleAPIError
 from app.llm.base_provider import BaseLLMProvider, LLMResponse, LLMCost, LLMModel

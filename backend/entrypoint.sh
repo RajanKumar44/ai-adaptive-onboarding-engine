@@ -48,7 +48,7 @@ echo "✅ PostgreSQL is ready!"
 if [ "$INIT_DB" = "true" ]; then
 echo ""
 echo "Initializing database..."
-python -c "from app.core.database import init_db; init_db()"
+python -c "from app.models import User, Analysis, AuditLog; from app.core.database import init_db; init_db()"
 echo "✅ Database initialized"
 fi
 

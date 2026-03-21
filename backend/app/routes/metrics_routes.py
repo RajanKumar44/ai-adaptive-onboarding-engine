@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Response
 from fastapi.responses import PlainTextResponse
 from typing import Dict, Any
 from app.core.auth import get_current_admin
-from app.core.models.user import User
+from app.models.user import User
 from app.core.prometheus_config import PrometheusMetrics
 from app.core.performance import (
     get_profiling_summary,
@@ -20,7 +20,7 @@ from app.core.performance import (
     performance_profiler,
     request_profiler
 )
-from app.core.config import settings
+from app.core.config import get_settings
 import logging
 
 
@@ -75,8 +75,8 @@ async def health_check():
             name="health", level=logging.INFO, pathname="", lineno=0,
             msg="", args=(), exc_info=None
         )),
-        "version": settings.APP_VERSION,
-        "environment": settings.ENVIRONMENT,
+        "version": get_settings().APP_VERSION,
+        "environment": get_settings().ENVIRONMENT,
         "uptime": "N/A"
     }
 
@@ -229,13 +229,13 @@ async def get_logging_info(
     **Requires**: Admin role
     """
     return {
-        "environment": settings.ENVIRONMENT,
-        "log_level": settings.LOG_LEVEL,
-        "log_format": settings.LOG_FORMAT,
+        "environment": get_settings().ENVIRONMENT,
+        "log_level": get_settings().LOG_LEVEL,
+        "log_format": get_settings().LOG_FORMAT,
         "log_dir": "./logs",
-        "log_max_bytes": settings.LOG_MAX_BYTES,
-        "log_backup_count": settings.LOG_BACKUP_COUNT,
-        "json_logging_enabled": settings.LOG_FORMAT == "json" and settings.ENVIRONMENT == "production"
+        "log_max_bytes": get_settings().LOG_MAX_BYTES,
+        "log_backup_count": get_settings().LOG_BACKUP_COUNT,
+        "json_logging_enabled": get_settings().LOG_FORMAT == "json" and get_settings().ENVIRONMENT == "production"
     }
 
 
@@ -259,10 +259,10 @@ async def get_sentry_info(
     **Requires**: Admin role
     """
     return {
-        "sentry_enabled": bool(settings.SENTRY_DSN),
-        "environment": settings.ENVIRONMENT,
-        "traces_sample_rate": settings.SENTRY_TRACES_SAMPLE_RATE,
-        "profiles_sample_rate": settings.SENTRY_PROFILES_SAMPLE_RATE,
+        "sentry_enabled": bool(get_settings().SENTRY_DSN),
+        "environment": get_settings().ENVIRONMENT,
+        "traces_sample_rate": get_settings().SENTRY_TRACES_SAMPLE_RATE,
+        "profiles_sample_rate": get_settings().SENTRY_PROFILES_SAMPLE_RATE,
         "message": "Detailed Sentry configuration available in admin console"
     }
 
@@ -288,7 +288,7 @@ async def get_monitoring_status():
     return {
         "prometheus_metrics": "enabled",
         "logging": "enabled",
-        "sentry": "enabled" if settings.SENTRY_DSN else "disabled",
+        "sentry": "enabled" if get_settings().SENTRY_DSN else "disabled",
         "profiling": "enabled",
         "status": "all_systems_operational"
     }

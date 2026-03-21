@@ -12,6 +12,14 @@ from contextlib import asynccontextmanager
 from app.core.config import get_settings
 from app.core.database import init_db
 from app.routes.analysis_routes import router as analysis_router
+from app.routes.auth_routes import router as auth_router
+from app.routes.admin_routes import router as admin_router
+from app.routes.bulk_routes import router as bulk_router
+from app.routes.llm_routes import router as llm_router
+from app.routes.metrics_routes import router as metrics_router
+
+# Import all models so they're registered with SQLAlchemy Base
+from app.models import User, Analysis, AuditLog
 
 # Load settings
 settings = get_settings()
@@ -24,10 +32,15 @@ async def lifespan(app: FastAPI):
     Startup & shutdown events.
     """
     try:
+        print("🔧 Initializing database tables...")
+        print(f"Models imported: User={User}, Analysis={Analysis}, AuditLog={AuditLog}")
         init_db()
         print("✓ Database initialized successfully")
     except Exception as e:
-        print(f"✗ Database initialization failed: {str(e)}")
+        print(f"✗ Database initialization failed: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise
 
     yield
 
@@ -66,6 +79,11 @@ app.add_middleware(
 
 # ================= ROUTES =================
 app.include_router(analysis_router)
+app.include_router(auth_router)
+app.include_router(admin_router)
+app.include_router(bulk_router)
+app.include_router(llm_router)
+app.include_router(metrics_router)
 
 
 # ================= ROOT =================

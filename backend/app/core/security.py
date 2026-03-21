@@ -11,8 +11,8 @@ import re
 
 settings = get_settings()
 
-# Password hashing configuration using bcrypt
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Use a backend-independent scheme for stable local/runtime compatibility.
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 
 class SecurityManager:
@@ -23,7 +23,7 @@ class SecurityManager:
     @staticmethod
     def hash_password(password: str) -> str:
         """
-        Hash a password using bcrypt.
+        Hash a password.
         
         Args:
             password: Plain text password

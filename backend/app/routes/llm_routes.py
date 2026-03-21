@@ -28,12 +28,12 @@ from app.schemas.llm_schemas import (
 from app.llm import LLMManager, LLMProvider, LLMModel, FallbackExtractor
 
 # Import auth from existing setup
-from app.core.security import verify_token_and_get_user
+from app.core.auth import get_current_user
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/llm", tags=["llm"])
+router = APIRouter(prefix="/api/v1/llm", tags=["llm"])
 
 # Global LLM Manager instance
 _llm_manager: Optional[LLMManager] = None
@@ -58,7 +58,7 @@ def get_llm_manager() -> LLMManager:
 )
 async def extract_skills(
     request: SkillExtractionRequest,
-    current_user: User = Depends(verify_token_and_get_user),
+    current_user: User = Depends(get_current_user),
     llm_manager: LLMManager = Depends(get_llm_manager),
 ):
     """
@@ -108,7 +108,7 @@ async def extract_skills(
 )
 async def extract_skills_with_confidence(
     request: SkillExtractionRequest,
-    current_user: User = Depends(verify_token_and_get_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Extract skills with confidence scores based on frequency."""
     try:
@@ -131,7 +131,7 @@ async def extract_skills_with_confidence(
 )
 async def extract_skills_by_category(
     request: SkillExtractionRequest,
-    current_user: User = Depends(verify_token_and_get_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Extract and categorize skills."""
     try:
@@ -149,7 +149,7 @@ async def extract_skills_by_category(
 )
 async def generate_text(
     request: GenerateTextRequest,
-    current_user: User = Depends(verify_token_and_get_user),
+    current_user: User = Depends(get_current_user),
     llm_manager: LLMManager = Depends(get_llm_manager),
 ):
     """
@@ -194,7 +194,7 @@ async def generate_text(
 )
 async def validate_providers(
     llm_manager: LLMManager = Depends(get_llm_manager),
-    current_user: User = Depends(verify_token_and_get_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Validate that all configured LLM providers are operational."""
     try:
@@ -216,7 +216,7 @@ async def validate_providers(
 )
 async def get_metrics(
     llm_manager: LLMManager = Depends(get_llm_manager),
-    current_user: User = Depends(verify_token_and_get_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Get comprehensive LLM Manager metrics and statistics."""
     try:
@@ -241,7 +241,7 @@ async def get_metrics(
 )
 async def get_cost_stats(
     llm_manager: LLMManager = Depends(get_llm_manager),
-    current_user: User = Depends(verify_token_and_get_user),
+    current_user: User = Depends(get_current_user),
     days: int = Query(default=30, ge=1, le=365),
 ):
     """Get cost statistics for the specified period."""
@@ -270,7 +270,7 @@ async def get_cost_stats(
 )
 async def forecast_costs(
     llm_manager: LLMManager = Depends(get_llm_manager),
-    current_user: User = Depends(verify_token_and_get_user),
+    current_user: User = Depends(get_current_user),
     daily_requests: int = Query(default=100, ge=1),
     days: int = Query(default=30, ge=1, le=365),
 ):
@@ -294,7 +294,7 @@ async def forecast_costs(
 )
 async def cache_control(
     request: CacheControlRequest,
-    current_user: User = Depends(verify_token_and_get_user),
+    current_user: User = Depends(get_current_user),
     llm_manager: LLMManager = Depends(get_llm_manager),
 ):
     """Clear cache or get cache statistics."""
@@ -331,7 +331,7 @@ async def cache_control(
     summary="Get LLM configuration"
 )
 async def get_config(
-    current_user: User = Depends(verify_token_and_get_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Get current LLM configuration and pricing information."""
     try:

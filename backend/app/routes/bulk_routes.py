@@ -8,12 +8,12 @@ Provides endpoints for bulk create, update, and delete operations on:
 Supports atomic and partial failure modes
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List
 
 from app.core.database import get_db
-from app.core.auth import get_current_user, require_admin
+from app.core.auth import get_current_user, get_current_admin
 from app.models.user import User, UserRole
 from app.models.analysis import Analysis
 from app.core.bulk_operations import (
@@ -34,9 +34,10 @@ bulk_handler = BulkOperationHandler(batch_size=100)
 @router.post("/users/create", response_model=BulkOperationResult, status_code=201)
 @limiter.limit(RateLimits.BULK_OPERATIONS)
 async def bulk_create_users(
-    request: BulkOperationRequest,
+    request: Request,
+    bulk_request: BulkOperationRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(get_current_admin)
 ):
     """
     Bulk create multiple users.
@@ -64,19 +65,19 @@ async def bulk_create_users(
             "atomic": true
         }
     """
-    if request.operation != BulkOperationType.CREATE:
+    if bulk_request.operation != BulkOperationType.CREATE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid operation type for create endpoint"
         )
     
-    if not request.items:
+    if not bulk_request.items:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Items list cannot be empty"
         )
     
-    if len(request.items) > 100:
+    if len(bulk_request.items) > 100:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Maximum 100 items per request"
@@ -85,8 +86,8 @@ async def bulk_create_users(
     result = bulk_handler.bulk_create(
         db,
         User,
-        request.items,
-        atomic=request.atomic
+        bulk_request.items,
+        atomic=bulk_request.atomic
     )
     
     return result
@@ -95,9 +96,10 @@ async def bulk_create_users(
 @router.post("/users/update", response_model=BulkOperationResult)
 @limiter.limit(RateLimits.BULK_OPERATIONS)
 async def bulk_update_users(
-    request: BulkOperationRequest,
+    request: Request,
+    bulk_request: BulkOperationRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(get_current_admin)
 ):
     """
     Bulk update multiple users.
@@ -125,13 +127,13 @@ async def bulk_update_users(
             "atomic": true
         }
     """
-    if request.operation != BulkOperationType.UPDATE:
+    if bulk_request.operation != BulkOperationType.UPDATE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid operation type for update endpoint"
         )
     
-    if not request.items:
+    if not bulk_request.items:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Items list cannot be empty"
@@ -140,9 +142,9 @@ async def bulk_update_users(
     result = bulk_handler.bulk_update(
         db,
         User,
-        request.items,
+        bulk_request.items,
         key_field="id",
-        atomic=request.atomic
+        atomic=bulk_request.atomic
     )
     
     return result
@@ -151,10 +153,11 @@ async def bulk_update_users(
 @router.post("/users/delete", response_model=BulkOperationResult)
 @limiter.limit(RateLimits.BULK_OPERATIONS)
 async def bulk_delete_users(
+    request: Request,
     ids: List[int],
     atomic: bool = True,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(get_current_admin)
 ):
     """
     Bulk delete multiple users.
@@ -193,7 +196,8 @@ async def bulk_delete_users(
 @router.post("/analyses/create", response_model=BulkOperationResult, status_code=201)
 @limiter.limit(RateLimits.BULK_OPERATIONS)
 async def bulk_create_analyses(
-    request: BulkOperationRequest,
+    request: Request,
+    bulk_request: BulkOperationRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -232,13 +236,13 @@ async def bulk_create_analyses(
             "atomic": true
         }
     """
-    if request.operation != BulkOperationType.CREATE:
+    if bulk_request.operation != BulkOperationType.CREATE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid operation type for create endpoint"
         )
     
-    if not request.items:
+    if not bulk_request.items:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Items list cannot be empty"
@@ -246,14 +250,14 @@ async def bulk_create_analyses(
     
     # If not admin, set user_id to current user
     if current_user.role != UserRole.ADMIN:
-        for item in request.items:
+        for item in bulk_request.items:
             item["user_id"] = current_user.id
     
     result = bulk_handler.bulk_create(
         db,
         Analysis,
-        request.items,
-        atomic=request.atomic
+        bulk_request.items,
+        atomic=bulk_request.atomic
     )
     
     return result
@@ -262,7 +266,8 @@ async def bulk_create_analyses(
 @router.post("/analyses/update", response_model=BulkOperationResult)
 @limiter.limit(RateLimits.BULK_OPERATIONS)
 async def bulk_update_analyses(
-    request: BulkOperationRequest,
+    request: Request,
+    bulk_request: BulkOperationRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -293,13 +298,13 @@ async def bulk_update_analyses(
             "atomic": false
         }
     """
-    if request.operation != BulkOperationType.UPDATE:
+    if bulk_request.operation != BulkOperationType.UPDATE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid operation type for update endpoint"
         )
     
-    if not request.items:
+    if not bulk_request.items:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Items list cannot be empty"
@@ -307,7 +312,7 @@ async def bulk_update_analyses(
     
     # Check authorization if not admin
     if current_user.role != UserRole.ADMIN:
-        analysis_ids = [item.get("id") for item in request.items if "id" in item]
+        analysis_ids = [item.get("id") for item in bulk_request.items if "id" in item]
         unauthorized = db.query(Analysis).filter(
             Analysis.id.in_(analysis_ids),
             Analysis.user_id != current_user.id
@@ -322,9 +327,9 @@ async def bulk_update_analyses(
     result = bulk_handler.bulk_update(
         db,
         Analysis,
-        request.items,
+        bulk_request.items,
         key_field="id",
-        atomic=request.atomic
+        atomic=bulk_request.atomic
     )
     
     return result
@@ -333,6 +338,7 @@ async def bulk_update_analyses(
 @router.post("/analyses/delete", response_model=BulkOperationResult)
 @limiter.limit(RateLimits.BULK_OPERATIONS)
 async def bulk_delete_analyses(
+    request: Request,
     ids: List[int],
     atomic: bool = True,
     db: Session = Depends(get_db),
@@ -388,7 +394,8 @@ async def bulk_delete_analyses(
 @router.post("/analyses/upsert", response_model=BulkOperationResult)
 @limiter.limit(RateLimits.BULK_OPERATIONS)
 async def bulk_upsert_analyses(
-    request: BulkOperationRequest,
+    request: Request,
+    bulk_request: BulkOperationRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -418,13 +425,13 @@ async def bulk_upsert_analyses(
             "atomic": false
         }
     """
-    if request.operation != BulkOperationType.UPSERT:
+    if bulk_request.operation != BulkOperationType.UPSERT:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid operation type for upsert endpoint"
         )
     
-    if not request.items:
+    if not bulk_request.items:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Items list cannot be empty"
@@ -432,16 +439,16 @@ async def bulk_upsert_analyses(
     
     # If not admin, set user_id to current user for new items
     if current_user.role != UserRole.ADMIN:
-        for item in request.items:
+        for item in bulk_request.items:
             if "id" not in item:  # New item
                 item["user_id"] = current_user.id
     
     result = bulk_handler.bulk_upsert(
         db,
         Analysis,
-        request.items,
+        bulk_request.items,
         key_field="id",
-        atomic=request.atomic
+        atomic=bulk_request.atomic
     )
     
     return result

@@ -3,7 +3,7 @@ API routes for user management and administration.
 Requires JWT authentication with appropriate roles.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.auth import get_current_admin
@@ -20,6 +20,7 @@ router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 @router.get("/users", response_model=dict)
 @limiter.limit(RateLimits.GENERAL)
 async def list_all_users(
+    request: Request,
     skip: int = Query(0, ge=0, description="Number of items to skip"),
     limit: int = Query(10, ge=1, le=100, description="Number of items to return"),
     sort_by: Optional[str] = Query(None, description="Field to sort by (created_at, name, email, role)"),
@@ -145,6 +146,7 @@ async def list_all_users(
 @router.get("/users/{user_id}", response_model=UserDetailResponse)
 @limiter.limit(RateLimits.GENERAL)
 async def get_user_details(
+    request: Request,
     user_id: int,
     current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db)
@@ -188,6 +190,7 @@ async def get_user_details(
 @router.put("/users/{user_id}/role", response_model=UserResponse)
 @limiter.limit(RateLimits.GENERAL)
 async def update_user_role(
+    request: Request,
     user_id: int,
     new_role: UserRole,
     current_admin: User = Depends(get_current_admin),
@@ -245,6 +248,7 @@ async def update_user_role(
 @router.put("/users/{user_id}/deactivate", response_model=UserResponse)
 @limiter.limit(RateLimits.GENERAL)
 async def deactivate_user(
+    request: Request,
     user_id: int,
     current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db)
@@ -303,6 +307,7 @@ async def deactivate_user(
 @router.put("/users/{user_id}/activate", response_model=UserResponse)
 @limiter.limit(RateLimits.GENERAL)
 async def activate_user(
+    request: Request,
     user_id: int,
     current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db)
@@ -349,6 +354,7 @@ async def activate_user(
 @router.delete("/users/{user_id}", status_code=204)
 @limiter.limit(RateLimits.GENERAL)
 async def delete_user(
+    request: Request,
     user_id: int,
     current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db)

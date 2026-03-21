@@ -159,6 +159,41 @@ services:
         max-size: "10m"
         max-file: "3"
   
+  # React Frontend Application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    
+    container_name: ai-onboarding-frontend
+    
+    # Ports
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    
+    # Environment variables
+    environment:
+      - VITE_API_URL=http://localhost:8000/api/v1
+      - VITE_APP_NAME=AI Adaptive Onboarding Engine
+    
+    # Dependencies
+    depends_on:
+      - app
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Networks
+    networks:
+      - app-network
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  
   # Optional: Adminer for database management UI
   # Access at http://localhost:8080
   adminer:

@@ -1,0 +1,373 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Test Report - AI Adaptive Onboarding Engine</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .summary-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .summary-card h3 {
+            color: #666;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+        
+        .summary-card .value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .summary-card.pass .value {
+            color: #28a745;
+        }
+        
+        .summary-card.fail .value {
+            color: #dc3545;
+        }
+        
+        .summary-card.rate .value {
+            color: #007bff;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .section-title {
+            font-size: 1.8em;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        
+        table thead {
+            background: #f8f9fa;
+        }
+        
+        table th {
+            padding: 15px;
+            text-align: left;
+            color: #333;
+            font-weight: 600;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        
+        .status-pass {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-fail {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .method-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            font-weight: 600;
+        }
+        
+        .method-get {
+            background: #cfe9ff;
+            color: #004085;
+        }
+        
+        .method-post {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .method-put {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .method-delete {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .endpoint {
+            font-family: 'Courier New', monospace;
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #d63384;
+        }
+        
+        .time {
+            color: #999;
+            font-size: 0.85em;
+        }
+        
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            border-top: 1px solid #e0e0e0;
+            color: #666;
+        }
+        
+        .test-details {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .test-details pre {
+            background: white;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+        
+        .chart-container {
+            display: flex;
+            justify-content: space-around;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+        
+        .chart {
+            text-align: center;
+            flex: 1;
+            min-width: 200px;
+            padding: 20px;
+        }
+        
+        .pie {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 API Test Report</h1>
+            <p>AI Adaptive Onboarding Engine Backend</p>
+        </div>
+        
+        <div class="summary">
+            <div class="summary-card">
+                <h3>Total Tests</h3>
+                <div class="value">6</div>
+            </div>
+            <div class="summary-card pass">
+                <h3>Passed</h3>
+                <div class="value">2</div>
+            </div>
+            <div class="summary-card fail">
+                <h3>Failed</h3>
+                <div class="value">4</div>
+            </div>
+            <div class="summary-card rate">
+                <h3>Pass Rate</h3>
+                <div class="value">33.3%</div>
+            </div>
+        </div>
+        
+        <div class="content">
+            <h2 class="section-title">📊 Test Results</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Endpoint</th>
+                        <th>Method</th>
+                        <th>Status</th>
+                        <th>Response Code</th>
+                        <th>Details</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td><span class="endpoint">/</span></td>
+                        <td><span class="method-badge method-get">GET</span></td>
+                        <td><span class="status-badge status-pass">✓ PASS</span></td>
+                        <td>200</td>
+                        <td>{
+  "service": "AI Adaptive Onboarding Engine",
+  "version": "1.0.0",
+  "status": "running",
+  "docs": "/api/v1/docs"
+}</td>
+                        <td class="time">0ms</td>
+                    </tr>
+
+                    <tr>
+                        <td><span class="endpoint">/health</span></td>
+                        <td><span class="method-badge method-get">GET</span></td>
+                        <td><span class="status-badge status-pass">✓ PASS</span></td>
+                        <td>200</td>
+                        <td>{
+  "status": "healthy",
+  "service": "AI Adaptive Onboarding Engine API",
+  "version": "1.0.0"
+}</td>
+                        <td class="time">0ms</td>
+                    </tr>
+
+                    <tr>
+                        <td><span class="endpoint">/auth/register</span></td>
+                        <td><span class="method-badge method-post">POST</span></td>
+                        <td><span class="status-badge status-fail">✗ FAIL</span></td>
+                        <td>422</td>
+                        <td>User: testuser1@example.com</td>
+                        <td class="time">0ms</td>
+                    </tr>
+
+                    <tr>
+                        <td><span class="endpoint">/auth/register</span></td>
+                        <td><span class="method-badge method-post">POST</span></td>
+                        <td><span class="status-badge status-fail">✗ FAIL</span></td>
+                        <td>422</td>
+                        <td>User: testuser2@example.com</td>
+                        <td class="time">0ms</td>
+                    </tr>
+
+                    <tr>
+                        <td><span class="endpoint">/auth/login</span></td>
+                        <td><span class="method-badge method-post">POST</span></td>
+                        <td><span class="status-badge status-fail">✗ FAIL</span></td>
+                        <td>500</td>
+                        <td>User: testuser1@example.com</td>
+                        <td class="time">0ms</td>
+                    </tr>
+
+                    <tr>
+                        <td><span class="endpoint">/auth/login</span></td>
+                        <td><span class="method-badge method-post">POST</span></td>
+                        <td><span class="status-badge status-fail">✗ FAIL</span></td>
+                        <td>500</td>
+                        <td>User: testuser2@example.com</td>
+                        <td class="time">0ms</td>
+                    </tr>
+
+                </tbody>
+            </table>
+            
+            <div class="test-details">
+                <h3>📋 Summary</h3>
+                <ul style="margin-left: 20px; line-height: 1.8;">
+<li>⚠️ 4 out of 6 tests failed</li>
+                    <li>Test Execution Time: 2026-03-21 00:13:09</li>
+                    <li>Base URL: http://localhost:8000</li>
+                    <li>API Version: /api/v1</li>
+
+                </ul>
+            </div>
+            
+            <div class="test-details">
+                <h3>🔍 Endpoints Tested</h3>
+                <ul style="margin-left: 20px; line-height: 1.8;">
+                    <li><code>GET /</code> - Root endpoint</li>
+                    <li><code>GET /api/v1/health</code> - Health check</li>
+                    <li><code>POST /api/v1/auth/register</code> - User registration</li>
+                    <li><code>POST /api/v1/auth/login</code> - User login</li>
+                    <li><code>POST /api/v1/analyze</code> - Resume & JD analysis</li>
+                    <li><code>GET /api/v1/analysis/{id}</code> - Get analysis</li>
+                    <li><code>GET /api/v1/users/{user_id}/analyses</code> - List user analyses</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+            <p>AI Adaptive Onboarding Engine | Backend Testing Suite</p>
+        </div>
+    </div>
+</body>
+</html>
