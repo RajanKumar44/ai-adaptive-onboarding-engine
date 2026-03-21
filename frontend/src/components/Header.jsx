@@ -1,11 +1,19 @@
 import React, { useState } from 'react'
 import { Bell, Search, User, ChevronDown } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useNavigate } from 'react-router-dom'
 
 export default function Header() {
   const [showNotifications, setShowNotifications] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogout = async () => {
+    await logout()
+    setShowProfile(false)
+    navigate('/login')
+  }
 
   return (
     <header className="bg-white border-b border-gray-200 px-4 sm:px-6 md:px-8 py-4">
@@ -87,7 +95,10 @@ export default function Header() {
                   </a>
                 </div>
                 <div className="px-4 py-3 border-t border-gray-200">
-                  <button className="w-full text-sm text-red-600 hover:text-red-700 font-medium text-left">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-sm text-red-600 hover:text-red-700 font-medium text-left"
+                  >
                     Logout
                   </button>
                 </div>

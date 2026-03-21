@@ -1,12 +1,17 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { BarChart, Bar, LineChart, Line, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { Download, Calendar, Filter } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import StatCard from '../components/StatCard'
+import { metricsAPI } from '../api/client'
 
 export default function Analytics() {
   const [dateRange, setDateRange] = useState('30days')
+  const [metricsStatus, setMetricsStatus] = useState('')
+  const [error, setError] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
+  const [summary, setSummary] = useState(null)
 
   const engagementData = [
     { day: 'Mon', engagement: 65, sessions: 120 },
@@ -36,6 +41,43 @@ export default function Analytics() {
     { name: 'David', started: 35, completed: 68 },
   ]
 
+  useEffect(() => {
+    const loadMetrics = async () => {
+      setError('')
+      try {
+        const [health, status] = await Promise.all([
+          metricsAPI.getHealth(),
+          metricsAPI.getPerformance().catch(() => null),
+        ])
+        setMetricsStatus(health?.data?.status || 'unknown')
+        setSummary(status?.data || null)
+      } catch (err) {
+        setError(err?.response?.data?.detail || 'Unable to fetch analytics metrics')
+      }
+    }
+
+    loadMetrics()
+  }, [dateRange])
+
+  const exportReport = () => {
+    const report = {
+      generatedAt: new Date().toISOString(),
+      dateRange,
+      healthStatus: metricsStatus || 'unknown',
+      engagementData,
+      performanceData,
+      progressData,
+      backendSummary: summary,
+    }
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `analytics-report-${dateRange}.json`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
@@ -52,11 +94,23 @@ export default function Analytics() {
                   <h1 className="text-3xl font-bold text-gray-900">Analytics</h1>
                   <p className="text-gray-600 mt-2">Comprehensive insights into your onboarding programs</p>
                 </div>
-                <button className="mt-4 sm:mt-0 btn-secondary px-6 py-2 inline-flex items-center space-x-2">
+                <button onClick={exportReport} className="mt-4 sm:mt-0 btn-secondary px-6 py-2 inline-flex items-center space-x-2">
                   <Download size={20} />
                   <span>Export Report</span>
                 </button>
               </div>
+
+              {metricsStatus && (
+                <p className="text-sm text-gray-600 mb-4">
+                  Backend metrics status: <span className="font-semibold capitalize">{metricsStatus}</span>
+                </p>
+              )}
+
+              {error && (
+                <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                  {error}
+                </div>
+              )}
 
               {/* Filters */}
               <div className="flex flex-col sm:flex-row gap-4">
@@ -70,11 +124,17 @@ export default function Analytics() {
                   <option value="90days">Last 90 Days</option>
                   <option value="12months">Last 12 Months</option>
                 </select>
-                <button className="btn-secondary px-4 py-2 inline-flex items-center space-x-2">
+                <button onClick={() => setShowFilters((prev) => !prev)} className="btn-secondary px-4 py-2 inline-flex items-center space-x-2">
                   <Filter size={20} />
-                  <span>More Filters</span>
+                  <span>{showFilters ? 'Hide Filters' : 'More Filters'}</span>
                 </button>
               </div>
+
+              {showFilters && (
+                <div className="mt-4 p-4 border border-gray-200 rounded-lg bg-white text-sm text-gray-700">
+                  Additional filter controls can be expanded here for departments, roles, and program types.
+                </div>
+              )}
             </div>
 
             {/* Key Metrics */}

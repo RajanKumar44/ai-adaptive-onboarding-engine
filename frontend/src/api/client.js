@@ -40,6 +40,7 @@ export const authAPI = {
   refresh: (data) => apiClient.post('/auth/refresh', data),
   logout: () => apiClient.post('/auth/logout'),
   getProfile: () => apiClient.get('/auth/me'),
+  updateProfile: (data) => apiClient.put('/auth/me', data),
   changePassword: (data) => apiClient.post('/auth/change-password', data),
 }
 
@@ -54,7 +55,11 @@ export const analysisAPI = {
 export const adminAPI = {
   listUsers: (params) => apiClient.get('/admin/users', { params }),
   getUserDetails: (id) => apiClient.get(`/admin/users/${id}`),
-  updateUser: (id, data) => apiClient.put(`/admin/users/${id}`, data),
+  updateUserRole: (id, newRole) => apiClient.put(`/admin/users/${id}/role`, null, {
+    params: { new_role: newRole },
+  }),
+  activateUser: (id) => apiClient.put(`/admin/users/${id}/activate`),
+  deactivateUser: (id) => apiClient.put(`/admin/users/${id}/deactivate`),
   deleteUser: (id) => apiClient.delete(`/admin/users/${id}`),
 }
 

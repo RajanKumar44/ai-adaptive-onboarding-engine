@@ -112,6 +112,37 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  const refreshProfile = async () => {
+    try {
+      const profile = await authAPI.getProfile()
+      setUser(profile.data)
+      localStorage.setItem('user', JSON.stringify(profile.data))
+      return profile.data
+    } catch (error) {
+      throw error.response?.data || error
+    }
+  }
+
+  const updateProfile = async (payload) => {
+    try {
+      const response = await authAPI.updateProfile(payload)
+      setUser(response.data)
+      localStorage.setItem('user', JSON.stringify(response.data))
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error
+    }
+  }
+
+  const changePassword = async (payload) => {
+    try {
+      const response = await authAPI.changePassword(payload)
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error
+    }
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -121,6 +152,9 @@ export const AuthProvider = ({ children }) => {
         register,
         login,
         logout,
+        refreshProfile,
+        updateProfile,
+        changePassword,
         isAuthenticated: !!token,
       }}
     >

@@ -1,11 +1,13 @@
 import React, { useState } from 'react'
 import { Plus, Search, Filter, BookOpen, Users, Clock, TrendingUp } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 
 export default function Programs() {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
+  const navigate = useNavigate()
 
   const [programs] = useState([
     {
@@ -142,7 +144,7 @@ export default function Programs() {
               </select>
 
               {/* Create Button */}
-              <button className="btn-primary px-6 py-2 inline-flex items-center space-x-2 whitespace-nowrap">
+              <button onClick={() => navigate('/analyze')} className="btn-primary px-6 py-2 inline-flex items-center space-x-2 whitespace-nowrap">
                 <Plus size={20} />
                 <span>New Program</span>
               </button>
@@ -210,10 +212,10 @@ export default function Programs() {
 
                     {/* Action Buttons */}
                     <div className="flex space-x-2 pt-4 border-t border-gray-200">
-                      <button className="flex-1 btn-secondary py-2 rounded text-sm font-medium">
+                      <button onClick={() => navigate('/analytics')} className="flex-1 btn-secondary py-2 rounded text-sm font-medium">
                         View
                       </button>
-                      <button className="flex-1 btn-primary py-2 rounded text-sm font-medium">
+                      <button onClick={() => navigate('/analyze')} className="flex-1 btn-primary py-2 rounded text-sm font-medium">
                         Edit
                       </button>
                     </div>

@@ -2,10 +2,20 @@ import React, { useState } from 'react'
 import { Save, Eye, EyeOff, Bell, Lock, User, Building, Globe } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
+import { useAuth } from '../context/AuthContext'
 
 export default function Settings() {
+  const { user, updateProfile, changePassword, refreshProfile } = useAuth()
   const [activeTab, setActiveTab] = useState('account')
   const [showPassword, setShowPassword] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
+  const [passwordForm, setPasswordForm] = useState({
+    old_password: '',
+    new_password: '',
+    confirm_password: '',
+  })
   const [settings, setSettings] = useState({
     account: {
       firstName: 'John',
@@ -62,8 +72,41 @@ export default function Settings() {
   }
 
   const handleSave = () => {
-    console.log('Settings saved:', settings)
-    alert('Settings saved successfully!')
+    const save = async () => {
+      setSaving(true)
+      setError('')
+      setMessage('')
+      try {
+        const fullName = `${settings.account.firstName} ${settings.account.lastName}`.trim()
+        await updateProfile({
+          name: fullName,
+          email: settings.account.email,
+        })
+        await refreshProfile()
+        setMessage('Settings saved successfully.')
+      } catch (err) {
+        setError(err?.detail || 'Failed to save settings')
+      } finally {
+        setSaving(false)
+      }
+    }
+
+    save()
+  }
+
+  const handleChangePassword = async () => {
+    setSaving(true)
+    setError('')
+    setMessage('')
+    try {
+      await changePassword(passwordForm)
+      setMessage('Password changed successfully.')
+      setPasswordForm({ old_password: '', new_password: '', confirm_password: '' })
+    } catch (err) {
+      setError(err?.detail || 'Failed to change password')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const ActiveIcon = tabs.find(tab => tab.id === activeTab)?.icon || User
@@ -82,6 +125,18 @@ export default function Settings() {
               <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
               <p className="text-gray-600 mt-2">Manage your account and preferences</p>
             </div>
+
+            {message && (
+              <div className="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
+                {message}
+              </div>
+            )}
+
+            {error && (
+              <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
 
             {/* Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -311,16 +366,50 @@ export default function Settings() {
                       </div>
 
                       <div className="pt-4 border-t border-gray-200">
-                        <button className="btn-secondary px-6 py-2">Change Password</button>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                          <input
+                            type={showPassword ? 'text' : 'password'}
+                            placeholder="Current password"
+                            value={passwordForm.old_password}
+                            onChange={(e) => setPasswordForm((prev) => ({ ...prev, old_password: e.target.value }))}
+                            className="input w-full"
+                          />
+                          <input
+                            type={showPassword ? 'text' : 'password'}
+                            placeholder="New password"
+                            value={passwordForm.new_password}
+                            onChange={(e) => setPasswordForm((prev) => ({ ...prev, new_password: e.target.value }))}
+                            className="input w-full"
+                          />
+                          <input
+                            type={showPassword ? 'text' : 'password'}
+                            placeholder="Confirm password"
+                            value={passwordForm.confirm_password}
+                            onChange={(e) => setPasswordForm((prev) => ({ ...prev, confirm_password: e.target.value }))}
+                            className="input w-full"
+                          />
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => setShowPassword((prev) => !prev)}
+                            className="btn-secondary px-4 py-2 inline-flex items-center space-x-2"
+                          >
+                            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                            <span>{showPassword ? 'Hide' : 'Show'} Passwords</span>
+                          </button>
+                          <button onClick={handleChangePassword} className="btn-secondary px-6 py-2" disabled={saving}>
+                            Change Password
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
 
                   {/* Save Button */}
                   <div className="mt-8 flex justify-end pt-6 border-t border-gray-200">
-                    <button onClick={handleSave} className="btn-primary px-8 py-3 inline-flex items-center space-x-2">
+                    <button onClick={handleSave} className="btn-primary px-8 py-3 inline-flex items-center space-x-2" disabled={saving}>
                       <Save size={20} />
-                      <span>Save Changes</span>
+                      <span>{saving ? 'Saving...' : 'Save Changes'}</span>
                     </button>
                   </div>
                 </div>

@@ -5,9 +5,11 @@ import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import StatCard from '../components/StatCard'
 import { useAuth } from '../context/AuthContext'
+import { useNavigate } from 'react-router-dom'
 
 export default function Dashboard() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [stats, setStats] = useState({
     activeUsers: 1250,
     completedOnboardings: 892,
@@ -158,16 +160,16 @@ export default function Dashboard() {
               <div className="card rounded-lg shadow-md p-6">
                 <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
                 <div className="space-y-3">
-                  <button className="w-full btn-primary py-3 rounded-lg text-center font-semibold">
+                  <button onClick={() => navigate('/analyze')} className="w-full btn-primary py-3 rounded-lg text-center font-semibold">
                     Start New Program
                   </button>
-                  <button className="w-full btn-secondary py-3 rounded-lg text-center font-semibold">
+                  <button onClick={() => navigate('/analytics')} className="w-full btn-secondary py-3 rounded-lg text-center font-semibold">
                     View Reports
                   </button>
-                  <button className="w-full btn-secondary py-3 rounded-lg text-center font-semibold">
+                  <button onClick={() => navigate('/users')} className="w-full btn-secondary py-3 rounded-lg text-center font-semibold">
                     Manage Users
                   </button>
-                  <button className="w-full btn-secondary py-3 rounded-lg text-center font-semibold">
+                  <button onClick={() => navigate('/settings')} className="w-full btn-secondary py-3 rounded-lg text-center font-semibold">
                     Settings
                   </button>
                 </div>
